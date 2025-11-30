@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perencanaan Biktren</title>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- PapaParse untuk CSV -->
+    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+    
+    <!-- Chart.js (Optional if needed later) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f1f5f9;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .glass-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+        /* Calendar Specific Styles */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #e2e8f0;
+        }
+        .calendar-cell {
+            background-color: white;
+            min-height: 100px;
+            transition: background-color 0.2s;
+        }
+        .calendar-cell:hover {
+            background-color: #f8fafc;
+        }
+        .mini-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #e2e8f0;
+            font-size: 0.7rem;
+        }
+        .mini-calendar-cell {
+            background-color: white;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .has-event-dot {
+            width: 4px;
+            height: 4px;
+            background-color: #3073F1;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 2px;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .truncate-cell {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .menu-item {
+            transition: all 0.2s ease-in-out;
+        }
+        .menu-item:hover {
+            transform: translateX(4px);
+        }
+        /* Update Active State for Blue Sidebar */
+        .menu-item.active {
+            background: #ffffff;
+            color: #3073F1;
+            font-weight: 700;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal-enter { opacity: 0; transform: scale(0.95); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: opacity 300ms, transform 300ms; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // Default URL
+        const DEFAULT_DPPK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQsyhdflwwzu6_vAeJVMO8JccuK_riBbDa45q1m6xWGe0Bq5Ol-AEwzuCULArWA-J_8JoSlqWH8yoL4/pub?gid=0&single=true&output=csv";
+        const DEFAULT_RAB = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQsyhdflwwzu6_vAeJVMO8JccuK_riBbDa45q1m6xWGe0Bq5Ol-AEwzuCULArWA-J_8JoSlqWH8yoL4/pub?gid=774580455&single=true&output=csv";
+
+        const currentYear = new Date().getFullYear();
+
+        const formatRupiah = (number) => {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number || 0);
+        };
+
+        const getMonthName = (index) => {
+            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            return months[index] || "";
+        };
+
+        const parseIndonesianDate = (dateString) => {
+            if (!dateString) return null;
+            const monthMap = {
+                'januari': 'January', 'februari': 'February', 'maret': 'March', 'april': 'April',
+                'mei': 'May', 'juni': 'June', 'juli': 'July', 'agustus': 'August',
+                'september': 'September', 'oktober': 'October', 'november': 'November', 'desember': 'December',
+                'jan': 'Jan', 'feb': 'Feb', 'mar': 'Mar', 'apr': 'Apr', 'mei': 'May', 'jun': 'Jun',
+                'jul': 'Jul', 'agu': 'Aug', 'sep': 'Sep', 'okt': 'Oct', 'nov': 'Nov', 'des': 'Dec'
+            };
+            let cleanStr = dateString.trim();
+            if (cleanStr.match(/^\d{4}-\d{2}-\d{2}$/)) return new Date(cleanStr);
+            const parts = cleanStr.split(' ');
+            const translatedParts = parts.map(part => {
+                const lower = part.toLowerCase();
+                return monthMap[lower] || part;
+            });
+            const translatedStr = translatedParts.join(' ');
+            const parsedDate = new Date(translatedStr);
+            if (!isNaN(parsedDate)) return parsedDate;
+            return null;
+        };
+
+        // Format Date to Hijri
+        const formatHijri = (date) => {
+            try {
+                // Using 'islamic-umalqura' or standard 'islamic'
+                return new Intl.DateTimeFormat('id-ID-u-ca-islamic', {
+                    day: 'numeric',
+                    month: 'long'
+                }).format(date);
+            } catch (e) {
+                return "";
+            }
+        };
+
+        // --- COMPONENTS ---
+
+        // Helper Component for Tables in Dashboard
+        const StatsTable = ({ title, icon, data, colorClass }) => {
+            return (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+                    <div className="p-5 border-b border-slate-100 flex items-center gap-3 bg-slate-50">
+                        <div className={`p-2 rounded-lg ${colorClass} bg-opacity-20 text-current`}>
+                            {icon}
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-slate-100 table-fixed">
+                            <thead className="bg-slate-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[35%]">Nama</th>
+                                    <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[12%]">Jml Program</th>
+                                    <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[12%]">Jml Kegiatan</th>
+                                    <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[20%]">Total Anggaran</th>
+                                    <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[21%]">Persentase</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {data.map((item, idx) => (
+                                    <tr key={idx} className="hover:bg-slate-50 transition">
+                                        <td className="px-6 py-4 text-sm font-medium text-slate-800 truncate" title={item.name}>{item.name}</td>
+                                        <td className="px-6 py-4 text-center text-sm text-slate-600">{item.programCount}</td>
+                                        <td className="px-6 py-4 text-center text-sm text-slate-600">{item.activityCount}</td>
+                                        <td className="px-6 py-4 text-right text-sm font-bold text-slate-800">{formatRupiah(item.budget)}</td>
+                                        <td className="px-6 py-4 align-middle">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden max-w-[100px]">
+                                                    <div className={`h-full rounded-full ${colorClass.replace('text-', 'bg-')}`} style={{ width: `${item.percentage}%` }}></div>
+                                                </div>
+                                                <span className="text-xs font-medium text-slate-500 w-10 text-right">{item.percentage.toFixed(1)}%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        const MiniStats = ({ programCount, activityCount, totalBudget, type }) => (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 animate-fade-in">
+                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #3073F1 0%, #4a84f3 100%)' }}>
+                    <div>
+                        <p className="text-xs font-semibold text-blue-100 uppercase tracking-wider">Total Program</p>
+                        <h3 className="text-xl font-bold text-white">{programCount}</h3>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm">
+                        <i data-lucide="layers" className="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #0BA875 0%, #20c58e 100%)' }}>
+                    <div>
+                        <p className="text-xs font-semibold text-emerald-100 uppercase tracking-wider">Total Kegiatan {type === 'RAB' ? '(Unik)' : ''}</p>
+                        <h3 className="text-xl font-bold text-white">{activityCount}</h3>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm">
+                        <i data-lucide="activity" className="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #E78B09 0%, #f5a636 100%)' }}>
+                    <div>
+                        <p className="text-xs font-semibold text-amber-100 uppercase tracking-wider">Total Anggaran</p>
+                        <h3 className="text-xl font-bold text-white">{formatRupiah(totalBudget)}</h3>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm">
+                        <i data-lucide="wallet" className="w-5 h-5"></i>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // DASHBOARD VIEW
+        const DashboardView = ({ stats, dataDPPK, dataRAB }) => {
+            const totalProgramUnique = useMemo(() => new Set(dataDPPK.map(d => d.program)).size, [dataDPPK]);
+            const totalKegiatan = dataDPPK.length;
+            const totalAnggaran = dataDPPK.reduce((acc, curr) => acc + (curr.anggaran || 0), 0);
+
+            const categoryStats = useMemo(() => {
+                const dynamicCategories = Array.from(new Set(dataDPPK.map(d => d.kategori || 'Tanpa Kategori'))).filter(Boolean);
+                const palette = [
+                    { gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', textLight: 'text-blue-100' },
+                    { gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', textLight: 'text-emerald-100' },
+                    { gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', textLight: 'text-amber-100' },
+                    { gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', textLight: 'text-purple-100' },
+                    { gradient: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)', textLight: 'text-rose-100' },
+                    { gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', textLight: 'text-cyan-100' },
+                    { gradient: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', textLight: 'text-indigo-100' },
+                ];
+
+                return dynamicCategories.map((catName, index) => {
+                    const items = dataDPPK.filter(d => (d.kategori || 'Tanpa Kategori') === catName);
+                    const budget = items.reduce((acc, curr) => acc + curr.anggaran, 0);
+                    const percentage = totalAnggaran > 0 ? (budget / totalAnggaran) * 100 : 0;
+                    const colorStyle = palette[index % palette.length];
+                    return { name: catName, budget, percentage, color: colorStyle };
+                }).sort((a, b) => b.budget - a.budget);
+            }, [dataDPPK, totalAnggaran]);
+
+            const getGroupStats = (key) => {
+                const groups = {};
+                dataDPPK.forEach(item => {
+                    const groupKey = item[key] || `Tanpa ${key}`;
+                    if (!groups[groupKey]) {
+                        groups[groupKey] = { name: groupKey, programs: new Set(), activityCount: 0, budget: 0 };
+                    }
+                    groups[groupKey].programs.add(item.program);
+                    groups[groupKey].activityCount += 1;
+                    groups[groupKey].budget += item.anggaran;
+                });
+                return Object.values(groups).map(g => ({
+                    name: g.name,
+                    programCount: g.programs.size,
+                    activityCount: g.activityCount,
+                    budget: g.budget,
+                    percentage: totalAnggaran > 0 ? (g.budget / totalAnggaran) * 100 : 0
+                })).sort((a, b) => b.budget - a.budget);
+            };
+
+            const wilayahStats = useMemo(() => getGroupStats('wilayah_kerja'), [dataDPPK, totalAnggaran]);
+            const unitStats = useMemo(() => getGroupStats('unit_kerja'), [dataDPPK, totalAnggaran]);
+            const picStats = useMemo(() => getGroupStats('pic'), [dataDPPK, totalAnggaran]);
+
+            return (
+                <div className="animate-fade-in space-y-8 pb-10">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="p-6 rounded-2xl shadow-lg flex items-center gap-4" style={{ background: 'linear-gradient(135deg, #3073F1 0%, #4a84f3 100%)' }}>
+                            <div className="p-4 rounded-full bg-white/20 text-white backdrop-blur-sm">
+                                <i data-lucide="layers" className="w-8 h-8"></i>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-blue-100 uppercase tracking-wider">Jumlah Program</p>
+                                <h3 className="text-3xl font-bold text-white">{totalProgramUnique}</h3>
+                            </div>
+                        </div>
+                        <div className="p-6 rounded-2xl shadow-lg flex items-center gap-4" style={{ background: 'linear-gradient(135deg, #0BA875 0%, #20c58e 100%)' }}>
+                            <div className="p-4 rounded-full bg-white/20 text-white backdrop-blur-sm">
+                                <i data-lucide="activity" className="w-8 h-8"></i>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-emerald-100 uppercase tracking-wider">Jumlah Kegiatan</p>
+                                <h3 className="text-3xl font-bold text-white">{totalKegiatan}</h3>
+                            </div>
+                        </div>
+                        <div className="p-6 rounded-2xl shadow-lg flex items-center gap-4" style={{ background: 'linear-gradient(135deg, #E78B09 0%, #f5a636 100%)' }}>
+                            <div className="p-4 rounded-full bg-white/20 text-white backdrop-blur-sm">
+                                <i data-lucide="wallet" className="w-8 h-8"></i>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-amber-100 uppercase tracking-wider">Total Anggaran</p>
+                                <h3 className="text-3xl font-bold text-white">{formatRupiah(totalAnggaran)}</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="pie-chart" className="w-5 h-5 text-indigo-600"></i> Sebaran Kategori Program
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                            {categoryStats.map((cat, idx) => (
+                                <div key={idx} className="p-4 rounded-xl shadow-md flex flex-col justify-between hover:shadow-lg transition-shadow" style={{ background: cat.color.gradient }}>
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="p-2 rounded-lg bg-white/20 text-white backdrop-blur-sm">
+                                            <i data-lucide="tag" className="w-5 h-5"></i>
+                                        </div>
+                                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-white/20 text-white backdrop-blur-sm">
+                                            {cat.percentage.toFixed(1)}%
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <p className={`text-xs font-semibold uppercase mb-1 ${cat.color.textLight}`}>Program {cat.name}</p>
+                                        <h4 className="text-lg font-bold text-white truncate" title={formatRupiah(cat.budget)}>
+                                            {formatRupiah(cat.budget)}
+                                        </h4>
+                                    </div>
+                                    <div className="w-full bg-black/10 h-1.5 rounded-full mt-3 overflow-hidden">
+                                        <div className="h-full bg-white" style={{ width: `${cat.percentage}%` }}></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <StatsTable 
+                        title="Informasi Berdasarkan Wilayah Kerja" 
+                        icon={<i data-lucide="map" className="w-5 h-5"></i>} 
+                        data={wilayahStats} 
+                        colorClass="text-blue-600"
+                    />
+                    <StatsTable 
+                        title="Informasi Berdasarkan Unit Kerja" 
+                        icon={<i data-lucide="building-2" className="w-5 h-5"></i>} 
+                        data={unitStats} 
+                        colorClass="text-emerald-600"
+                    />
+                    <StatsTable 
+                        title="Informasi Berdasarkan PIC" 
+                        icon={<i data-lucide="users" className="w-5 h-5"></i>} 
+                        data={picStats} 
+                        colorClass="text-purple-600"
+                    />
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                                    <i data-lucide="trending-up" className="w-5 h-5"></i>
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-800">5 Kegiatan dengan Anggaran Terbesar</h3>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-slate-100">
+                                <thead className="bg-slate-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Kegiatan</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Unit Kerja</th>
+                                        <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase">Anggaran</th>
+                                        <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase">% dari Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {dataDPPK.sort((a,b) => b.anggaran - a.anggaran).slice(0, 5).map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-50 transition">
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-medium text-slate-900 line-clamp-1">{item.kegiatan}</div>
+                                                <div className="text-xs text-slate-500">{item.program}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-slate-500">{item.unit_kerja}</td>
+                                            <td className="px-6 py-4 text-right text-sm font-bold text-indigo-600">{formatRupiah(item.anggaran)}</td>
+                                            <td className="px-6 py-4 text-center text-sm text-slate-500 font-mono">
+                                                {totalAnggaran > 0 ? ((item.anggaran / totalAnggaran) * 100).toFixed(2) : 0}%
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ActivityDetailModal = ({ activity, rabItems, onClose }) => {
+            const calculatedTotal = useMemo(() => rabItems.reduce((acc, item) => acc + (item.total || 0), 0), [rabItems]);
+
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-modal-enter">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50">
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md uppercase tracking-wider">{activity.kategori || 'Kegiatan'}</span>
+                                    {activity.wilayah_kerja && (
+                                        <span className={`px-2 py-1 text-xs font-bold rounded-md uppercase tracking-wider ${activity.wilayah_kerja.toLowerCase() === 'putra' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>
+                                            {activity.wilayah_kerja}
+                                        </span>
+                                    )}
+                                    <span className="text-slate-400 text-xs font-mono">{activity.kode_akup}</span>
+                                </div>
+                                <h2 className="text-xl font-bold text-slate-800 leading-tight">{activity.kegiatan}</h2>
+                                <p className="text-sm text-slate-500 mt-1">{activity.program}</p>
+                            </div>
+                            <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500">
+                                <i data-lucide="x" className="w-6 h-6"></i>
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto flex-1 space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                        <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Indikator Capaian</div>
+                                        <div className="text-sm text-slate-700">{activity.indikator || '-'}</div>
+                                    </div>
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                        <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Sasaran</div>
+                                        <div className="text-sm text-slate-700">{activity.sasaran || '-'}</div>
+                                    </div>
+                                    {activity.link_berkas && (
+                                        <a 
+                                            href={activity.link_berkas} 
+                                            target="_blank" 
+                                            className="block w-full text-center bg-blue-50 text-blue-600 p-3 rounded-lg border border-blue-100 hover:bg-blue-100 transition font-medium flex items-center justify-center gap-2"
+                                        >
+                                            <i data-lucide="file-text" className="w-4 h-4"></i> Buka Berkas Pendukung
+                                        </a>
+                                    )}
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3">
+                                        <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><i data-lucide="calendar" className="w-5 h-5"></i></div>
+                                        <div>
+                                            <div className="text-xs font-semibold text-slate-400 uppercase">Waktu Pelaksanaan</div>
+                                            <div className="text-sm font-bold text-slate-800">{activity.waktu || '-'}</div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3">
+                                        <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg"><i data-lucide="wallet" className="w-5 h-5"></i></div>
+                                        <div>
+                                            <div className="text-xs font-semibold text-slate-400 uppercase">Total Anggaran (Realisasi RAB)</div>
+                                            <div className="text-lg font-bold text-emerald-600">{formatRupiah(calculatedTotal)}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <i data-lucide="shopping-cart" className="w-5 h-5 text-indigo-600"></i> Rincian Anggaran Biaya (RAB)
+                                </h3>
+                                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                    <table className="min-w-full divide-y divide-slate-200">
+                                        <thead className="bg-slate-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Rincian Item</th>
+                                                <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">Vol</th>
+                                                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Harga Satuan</th>
+                                                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Total Biaya</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-slate-200">
+                                            {rabItems.map((item, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-50">
+                                                    <td className="px-4 py-3">
+                                                        <div className="text-sm font-medium text-slate-800">{item.rincian}</div>
+                                                        <div className="text-xs text-slate-500">
+                                                            {item.jumlah} {item.satuan_jml} x {item.frek} {item.satuan_frek}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center text-sm text-slate-600 bg-slate-50 font-mono">{item.volume}</td>
+                                                    <td className="px-4 py-3 text-right text-sm text-slate-600 font-mono">{formatRupiah(item.harga)}</td>
+                                                    <td className="px-4 py-3 text-right text-sm font-bold text-slate-800 font-mono">{formatRupiah(item.total)}</td>
+                                                </tr>
+                                            ))}
+                                            {rabItems.length === 0 && <tr><td colSpan="4" className="px-4 py-8 text-center text-slate-400 text-sm">Belum ada rincian RAB.</td></tr>}
+                                        </tbody>
+                                        {rabItems.length > 0 && (
+                                            <tfoot className="bg-slate-50">
+                                                <tr>
+                                                    <td colSpan="3" className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Total Keseluruhan</td>
+                                                    <td className="px-4 py-3 text-right text-sm font-bold text-indigo-600">{formatRupiah(calculatedTotal)}</td>
+                                                </tr>
+                                            </tfoot>
+                                        )}
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                            <button onClick={onClose} className="px-6 py-2 bg-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-300 transition">Tutup</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const StatusBadge = ({ type }) => (
+            <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${type === 'Rutin' ? 'bg-blue-100 text-blue-700 border-blue-200' : type === 'Pengadaan' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-purple-100 text-purple-700 border-purple-200'}`}>{type || 'Umum'}</span>
+        );
+
+        // Updated Calendar View Component
+        const CalendarView = ({ events, setSelectedActivity }) => {
+            const [date, setDate] = useState(new Date());
+            const [viewMode, setViewMode] = useState('month'); // 'month' or 'year'
+            
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const daysNames = ['M', 'S', 'S', 'R', 'K', 'J', 'S'];
+
+            const changeMonth = (monthIndex) => {
+                const newDate = new Date(date);
+                newDate.setMonth(monthIndex);
+                setDate(newDate);
+            };
+
+            const toggleViewMode = () => {
+                setViewMode(prev => prev === 'month' ? 'year' : 'month');
+            };
+
+            // Calculate monthly activities
+            const monthlyEvents = useMemo(() => {
+                return events.filter(e => {
+                    const eDate = new Date(e.tanggal);
+                    return eDate.getMonth() === date.getMonth() && eDate.getFullYear() === date.getFullYear();
+                }).sort((a,b) => new Date(a.tanggal) - new Date(b.tanggal));
+            }, [events, date]);
+
+            // Render Single Month Grid (Large)
+            const renderMonthGrid = (targetDate, isMini = false) => {
+                const currentMonth = targetDate.getMonth();
+                const currentYear = targetDate.getFullYear();
+                
+                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+                
+                const days = [];
+                for (let i = 0; i < firstDayOfMonth; i++) days.push(null);
+                for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+                return (
+                    <div className={isMini ? "mini-calendar-grid" : "calendar-grid"}>
+                        {days.map((day, idx) => {
+                            // Filter events for this day
+                            let dayEvents = [];
+                            let hijriText = "";
+                            let cellDate = null;
+
+                            if (day) {
+                                cellDate = new Date(currentYear, currentMonth, day);
+                                dayEvents = events.filter(e => {
+                                    const eDate = new Date(e.tanggal);
+                                    return eDate.getDate() === day && eDate.getMonth() === currentMonth && eDate.getFullYear() === currentYear;
+                                });
+                                hijriText = formatHijri(cellDate);
+                            }
+
+                            if (isMini) {
+                                return (
+                                    <div key={idx} className={`mini-calendar-cell ${!day ? 'bg-transparent' : ''}`}>
+                                        {day && (
+                                            <>
+                                                <span className={`text-[10px] ${dayEvents.length > 0 ? 'font-bold text-slate-800' : 'text-slate-400'}`}>{day}</span>
+                                                {dayEvents.length > 0 && <div className="has-event-dot"></div>}
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            }
+
+                            // Full View Cell
+                            const isToday = day === new Date().getDate() && currentMonth === new Date().getMonth() && currentYear === new Date().getFullYear();
+                            const hasActivity = dayEvents.length > 0;
+                            
+                            return (
+                                <div key={idx} className={`calendar-cell p-2 flex flex-col border-b border-r border-slate-100 ${!day ? 'bg-slate-50' : ''} ${hasActivity ? 'bg-indigo-50' : ''}`}>
+                                    {day && (
+                                        <>
+                                            <div className="flex flex-col items-center justify-center h-full">
+                                                <div className={`text-xl font-medium flex items-center justify-center w-10 h-10 rounded-full mb-1 ${isToday ? 'bg-indigo-600 text-white' : (idx%7===5)?'text-red-500':'text-slate-700'}`}>
+                                                    {day}
+                                                </div>
+                                                <div className="text-[10px] text-slate-400 text-center font-serif leading-tight opacity-80">
+                                                    {hijriText}
+                                                </div>
+                                                {/* NEW: Activity Count Badge */}
+                                                {hasActivity && (
+                                                    <div className="mt-2 px-2 py-1 bg-white/60 backdrop-blur-sm border border-indigo-200 text-indigo-700 text-[10px] font-bold rounded-full shadow-sm">
+                                                        {dayEvents.length} Kegiatan
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            };
+
+            return (
+                <div className="animate-fade-in flex flex-col gap-6">
+                    {/* Top Info Card */}
+                    {viewMode === 'month' && (
+                        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Jumlah Kegiatan Bulan Ini</p>
+                                <h3 className="text-3xl font-bold text-slate-800 mt-1">{monthlyEvents.length} Kegiatan</h3>
+                                <p className="text-sm text-indigo-600 mt-1 font-medium">{getMonthName(date.getMonth())} {date.getFullYear()}</p>
+                            </div>
+                            <div className="p-4 bg-indigo-50 text-indigo-600 rounded-full">
+                                <i data-lucide="calendar-check" className="w-8 h-8"></i>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        {/* Calendar Header */}
+                        <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <i data-lucide="calendar" className="w-6 h-6 text-indigo-600"></i> 
+                                    {viewMode === 'month' ? `${getMonthName(date.getMonth())} ${date.getFullYear()}` : `Tahun ${date.getFullYear()}`}
+                                </h2>
+                                <div className="flex bg-slate-200 rounded-lg p-1">
+                                    <button 
+                                        onClick={() => setViewMode('month')} 
+                                        className={`px-3 py-1 rounded-md text-sm font-medium transition ${viewMode === 'month' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                    >
+                                        Bulanan
+                                    </button>
+                                    <button 
+                                        onClick={() => setViewMode('year')} 
+                                        className={`px-3 py-1 rounded-md text-sm font-medium transition ${viewMode === 'year' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                                    >
+                                        Tahunan
+                                    </button>
+                                </div>
+                            </div>
+                            {/* Year Navigation Only */}
+                            <div className="flex space-x-2">
+                                <button onClick={() => setDate(new Date(date.getFullYear() - 1, date.getMonth(), 1))} className="p-2 hover:bg-slate-200 rounded-lg text-slate-600"><i data-lucide="chevron-left" className="w-5 h-5"></i></button>
+                                <span className="py-2 px-3 font-bold text-slate-700 bg-white border border-slate-200 rounded-lg">{date.getFullYear()}</span>
+                                <button onClick={() => setDate(new Date(date.getFullYear() + 1, date.getMonth(), 1))} className="p-2 hover:bg-slate-200 rounded-lg text-slate-600"><i data-lucide="chevron-right" className="w-5 h-5"></i></button>
+                            </div>
+                        </div>
+
+                        {/* Month Quick Selector (Only in Month View) */}
+                        {viewMode === 'month' && (
+                            <div className="flex overflow-x-auto border-b border-slate-200 bg-white p-2 hide-scrollbar space-x-2 sticky top-0 z-10">
+                                {monthNames.map((name, index) => (
+                                    <button
+                                        key={name}
+                                        onClick={() => changeMonth(index)}
+                                        className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition whitespace-nowrap ${date.getMonth() === index ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-100'}`}
+                                    >
+                                        {name}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Content Area */}
+                        <div className="flex-1 overflow-y-auto relative">
+                            {viewMode === 'month' ? (
+                                <>
+                                    {/* Days Header */}
+                                    <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center py-3 sticky top-0 z-10 shadow-sm">
+                                        {['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, i) => (
+                                            <div key={d} className={`text-xs font-bold uppercase ${i===5 ?'text-red-500':'text-slate-500'}`}>{d}</div>
+                                        ))}
+                                    </div>
+                                    {renderMonthGrid(date)}
+                                </>
+                            ) : (
+                                /* Year View Grid */
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    {monthNames.map((name, index) => {
+                                        const monthDate = new Date(date.getFullYear(), index, 1);
+                                        return (
+                                            <div key={name} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition cursor-pointer" onClick={() => {changeMonth(index); setViewMode('month');}}>
+                                                <div className="bg-slate-50 p-2 text-center border-b border-slate-100 font-bold text-slate-700 text-sm">
+                                                    {name}
+                                                </div>
+                                                <div className="grid grid-cols-7 text-center py-1 bg-white border-b border-slate-50">
+                                                    {daysNames.map((d,i) => <span key={i} className={`text-[9px] font-bold ${i===5 ?'text-red-400':'text-slate-400'}`}>{d}</span>)}
+                                                </div>
+                                                <div className="p-1">
+                                                    {renderMonthGrid(monthDate, true)}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* NEW: Activity List Card Below Calendar */}
+                    {viewMode === 'month' && (
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div className="p-5 border-b border-slate-100 flex items-center gap-3 bg-slate-50">
+                                <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                    <i data-lucide="list" className="w-5 h-5"></i>
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-800">Daftar Kegiatan - {getMonthName(date.getMonth())} {date.getFullYear()}</h3>
+                            </div>
+                            
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-slate-100">
+                                    <thead className="bg-slate-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[10%]">Tanggal</th>
+                                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[30%]">Program & Kegiatan</th>
+                                            <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[15%]">Anggaran</th>
+                                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[20%]">PIC & Unit</th>
+                                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[15%]">Wilayah Kerja</th>
+                                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[10%]">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 bg-white">
+                                        {monthlyEvents.length > 0 ? (
+                                            monthlyEvents.map((ev, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-50 transition">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col items-center justify-center w-12 p-2 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                                            <span className="text-lg font-bold leading-none">{new Date(ev.tanggal).getDate()}</span>
+                                                            <span className="text-[10px] font-bold uppercase mt-1">{getMonthName(new Date(ev.tanggal).getMonth()).substring(0, 3)}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <h4 className="text-sm font-bold text-slate-800 line-clamp-2">{ev.kegiatan}</h4>
+                                                        <p className="text-xs text-slate-500 mt-1 line-clamp-1">{ev.program}</p>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <span className="text-sm font-bold text-slate-700 font-mono">{formatRupiah(ev.anggaran)}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-sm font-medium text-slate-800">{ev.pic}</div>
+                                                        <div className="text-xs text-indigo-600 font-medium">{ev.unit_kerja}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        {ev.wilayah_kerja && (
+                                                            <span className={`px-2 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider ${ev.wilayah_kerja.toLowerCase() === 'putra' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>
+                                                                {ev.wilayah_kerja}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <button onClick={() => setSelectedActivity(ev)} className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition shadow-sm shadow-indigo-200">
+                                                            Detail
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="6" className="px-6 py-12 text-center text-slate-500 italic">
+                                                    Tidak ada kegiatan pada bulan ini.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const SettingView = ({ config, onSave }) => {
+            const [dppk, setDppk] = useState(config.dppk);
+            const [rab, setRab] = useState(config.rab);
+            const [isSaved, setIsSaved] = useState(false);
+
+            const handleSave = () => {
+                onSave(dppk, rab);
+                setIsSaved(true);
+                setTimeout(() => setIsSaved(false), 3000);
+            };
+
+            return (
+                <div className="max-w-2xl mx-auto mt-8 animate-fade-in">
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                        <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                            <i data-lucide="settings" className="w-6 h-6 text-slate-500"></i> Pengaturan Sumber Data
+                        </h2>
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Link CSV Google Sheet (DPPK)</label>
+                                <input type="text" value={dppk} onChange={(e) => setDppk(e.target.value)} className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Link CSV Google Sheet (RAB)</label>
+                                <input type="text" value={rab} onChange={(e) => setRab(e.target.value)} className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                            </div>
+                            <div className="pt-4 flex items-center gap-3">
+                                <button onClick={handleSave} className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-700 transition font-medium flex items-center gap-2"><i data-lucide="save" className="w-4 h-4"></i> Simpan Perubahan</button>
+                                <button onClick={() => {setDppk(DEFAULT_DPPK); setRab(DEFAULT_RAB);}} className="bg-white text-slate-600 border border-slate-300 px-6 py-2.5 rounded-lg hover:bg-slate-50 transition font-medium">Reset Default</button>
+                            </div>
+                            {isSaved && <div className="p-4 bg-green-50 text-green-700 rounded-lg flex items-center gap-2 animate-bounce"><i data-lucide="check-circle" className="w-5 h-5"></i> Pengaturan berhasil disimpan!</div>}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [config, setConfig] = useState({ dppk: localStorage.getItem('dppk_url') || DEFAULT_DPPK, rab: localStorage.getItem('rab_url') || DEFAULT_RAB });
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [searchTerm, setSearchTerm] = useState('');
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            
+            const [dataDPPK, setDataDPPK] = useState([]);
+            const [dataRAB, setDataRAB] = useState([]);
+            const [selectedUnit, setSelectedUnit] = useState('');
+            const [selectedPIC, setSelectedPIC] = useState('');
+            const [selectedWilayah, setSelectedWilayah] = useState(''); // NEW STATE
+            const [selectedActivity, setSelectedActivity] = useState(null);
+
+            useEffect(() => {
+                const fetchData = async () => {
+                    setLoading(true);
+                    try {
+                        if (config.dppk && config.rab) {
+                            const fetchCSV = (url) => new Promise((resolve, reject) => Papa.parse(url, { download: true, header: true, skipEmptyLines: true, complete: res => resolve(res.data), error: reject }));
+                            const [dppkRes, rabRes] = await Promise.all([fetchCSV(config.dppk), fetchCSV(config.rab)]);
+                            
+                            setDataDPPK(dppkRes.map(item => ({
+                                no: parseInt(item['no']) || 0,
+                                kategori: item['kategori'] || '',
+                                kode_akup: item['kode akup'] || '-',
+                                program: item['program'] || '',
+                                kegiatan: item['kegiatan'] || '',
+                                indikator: item['indikator capaian'] || '-',
+                                sasaran: item['sasaran'] || '-',
+                                waktu: item['waktu'] || '', 
+                                anggaran: parseInt(String(item['anggaran']).replace(/[^0-9]/g, '')) || 0,
+                                pic: item['pic'] || '',
+                                unit_kerja: item['unit kerja'] || '',
+                                wilayah_kerja: item['Wilayah Kerja'] || item['wilayah kerja'] || '',
+                                link_berkas: item['Link Berkas'] || item['link berkas'] || ''
+                            })));
+
+                            setDataRAB(rabRes.map(item => ({
+                                no: parseInt(item['no']) || 0,
+                                program: item['program'] || '',
+                                kegiatan: item['kegiatan'] || '',
+                                rincian: item['rincian'] || '',
+                                jumlah: parseInt(item['jumlah kuantitas']) || 0,
+                                satuan_jml: item['satuan_jml'] || '',
+                                frek: parseInt(item['frek']) || 0,
+                                satuan_frek: item['satuan_frek'] || '',
+                                volume: parseInt(item['volume']) || 0,
+                                harga: parseInt(String(item['harga satuan']).replace(/[^0-9]/g, '')) || 0,
+                                total: parseInt(String(item['total biaya']).replace(/[^0-9]/g, '')) || 0,
+                                pic: item['pic'] || '',
+                                unit_kerja: item['unit kerja'] || '',
+                                wilayah_kerja: item['Wilayah Kerja'] || item['wilayah kerja'] || ''
+                            })));
+                        }
+                        setLoading(false);
+                    } catch (err) { setError("Gagal mengambil data."); setLoading(false); }
+                };
+                fetchData();
+            }, [config]);
+
+            const uniqueUnits = useMemo(() => Array.from(new Set([...dataDPPK.map(i => i.unit_kerja), ...dataRAB.map(i => i.unit_kerja)])).filter(Boolean).sort(), [dataDPPK, dataRAB]);
+            const uniquePICs = useMemo(() => Array.from(new Set([...dataDPPK.map(i => i.pic), ...dataRAB.map(i => i.pic)])).filter(Boolean).sort(), [dataDPPK, dataRAB]);
+            // NEW: Unique Wilayah
+            const uniqueWilayahs = useMemo(() => Array.from(new Set([...dataDPPK.map(i => i.wilayah_kerja), ...dataRAB.map(i => i.wilayah_kerja)])).filter(Boolean).sort(), [dataDPPK, dataRAB]);
+
+            const filterItem = (item) => {
+                const search = searchTerm.toLowerCase();
+                const matchesSearch = 
+                    (item.program && item.program.toLowerCase().includes(search)) || 
+                    (item.kegiatan && item.kegiatan.toLowerCase().includes(search)) ||
+                    (item.pic && item.pic.toLowerCase().includes(search)) ||
+                    (item.unit_kerja && item.unit_kerja.toLowerCase().includes(search)) ||
+                    (item.wilayah_kerja && item.wilayah_kerja.toLowerCase().includes(search));
+                return matchesSearch && 
+                       (selectedUnit ? item.unit_kerja === selectedUnit : true) && 
+                       (selectedPIC ? item.pic === selectedPIC : true) &&
+                       (selectedWilayah ? item.wilayah_kerja === selectedWilayah : true); // Check Wilayah
+            };
+
+            const filteredDPPK = useMemo(() => dataDPPK.filter(filterItem), [dataDPPK, searchTerm, selectedUnit, selectedPIC, selectedWilayah]);
+            const filteredRAB = useMemo(() => dataRAB.filter(item => {
+                 const search = searchTerm.toLowerCase();
+                 const matchesSearch = (item.program?.toLowerCase().includes(search)) || (item.kegiatan?.toLowerCase().includes(search)) || (item.rincian?.toLowerCase().includes(search)) || (item.pic?.toLowerCase().includes(search));
+                 return matchesSearch && 
+                        (selectedUnit ? item.unit_kerja === selectedUnit : true) && 
+                        (selectedPIC ? item.pic === selectedPIC : true) &&
+                        (selectedWilayah ? item.wilayah_kerja === selectedWilayah : true); // Check Wilayah
+            }), [dataRAB, searchTerm, selectedUnit, selectedPIC, selectedWilayah]);
+
+            // Filtered Stats Calculation (Added)
+            const currentStats = useMemo(() => {
+                if (activeTab === 'dppk') {
+                    return {
+                        program: new Set(filteredDPPK.map(d => d.program)).size,
+                        kegiatan: filteredDPPK.length,
+                        anggaran: filteredDPPK.reduce((acc, curr) => acc + (curr.anggaran || 0), 0)
+                    };
+                } else if (activeTab === 'rab') {
+                    return {
+                        program: new Set(filteredRAB.map(d => d.program)).size,
+                        kegiatan: new Set(filteredRAB.map(d => d.kegiatan)).size,
+                        anggaran: filteredRAB.reduce((acc, curr) => acc + (curr.total || 0), 0)
+                    };
+                }
+                return null;
+            }, [activeTab, filteredDPPK, filteredRAB]);
+
+
+            // Calendar Events
+            const calendarEvents = useMemo(() => {
+                let expandedEvents = [];
+                filteredDPPK.forEach(item => {
+                    if (!item.waktu) return;
+                    item.waktu.split(',').map(s => s.trim()).forEach(dateStr => {
+                        const parsedDate = parseIndonesianDate(dateStr);
+                        if (parsedDate) {
+                            const yyyy = parsedDate.getFullYear();
+                            const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
+                            const dd = String(parsedDate.getDate()).padStart(2, '0');
+                            expandedEvents.push({ ...item, tanggal: `${yyyy}-${mm}-${dd}`, waktu_display: dateStr });
+                        }
+                    });
+                });
+                return expandedEvents;
+            }, [filteredDPPK]);
+
+            // Stats Calculation
+            const stats = useMemo(() => ({
+                totalAnggaran: filteredDPPK.reduce((acc, curr) => acc + (curr.anggaran || 0), 0),
+                totalRealisasi: filteredRAB.reduce((acc, curr) => acc + (curr.total || 0), 0),
+                totalProgram: filteredDPPK.length
+            }), [filteredDPPK, filteredRAB]);
+
+            const getRABForActivity = (kegiatanName) => dataRAB.filter(item => item.kegiatan && item.kegiatan.trim().toLowerCase() === kegiatanName.trim().toLowerCase());
+
+            // Icon handling: Added more dependencies to ensure icons refresh on filter changes
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [activeTab, loading, selectedActivity, searchTerm, selectedUnit, selectedPIC, selectedWilayah, dataDPPK, dataRAB, currentStats]);
+
+            return (
+                <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 font-sans">
+                    {/* SIDEBAR - Updated Color to #3073F1 */}
+                    <aside className="w-full md:w-72 bg-[#3073F1] border-r border-blue-600 flex flex-col h-auto md:h-screen sticky top-0 z-50">
+                        <div className="p-6 border-b border-blue-500 hidden md:block">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white p-2.5 rounded-xl text-[#3073F1] shadow-lg"><i data-lucide="layers" className="w-6 h-6"></i></div>
+                                <div><h1 className="font-bold text-white leading-tight">Perencanaan<br/>Biktren</h1></div>
+                            </div>
+                        </div>
+                        <nav className="flex-1 p-4 space-y-2 overflow-y-auto hide-scrollbar">
+                            <button onClick={() => setActiveTab('dashboard')} className={`menu-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium ${activeTab === 'dashboard' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`}><i data-lucide="layout-dashboard" className="w-5 h-5"></i> Dashboard</button>
+                            <div className="px-4 py-2 text-xs font-semibold text-blue-200 uppercase tracking-wider mt-4">Data Master</div>
+                            <button onClick={() => setActiveTab('dppk')} className={`menu-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium ${activeTab === 'dppk' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`}><i data-lucide="list" className="w-5 h-5"></i> Data DPPK</button>
+                            <button onClick={() => setActiveTab('rab')} className={`menu-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium ${activeTab === 'rab' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`}><i data-lucide="shopping-bag" className="w-5 h-5"></i> Rincian RAB</button>
+                            <button onClick={() => setActiveTab('calendar')} className={`menu-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium ${activeTab === 'calendar' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`}><i data-lucide="calendar" className="w-5 h-5"></i> Kalender Kerja</button>
+                            <div className="pt-4 mt-auto border-t border-blue-500">
+                                <button onClick={() => setActiveTab('setting')} className={`menu-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium ${activeTab === 'setting' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`}><i data-lucide="settings" className="w-5 h-5"></i> Pengaturan</button>
+                            </div>
+                        </nav>
+
+                        {/* QUOTE CARD */}
+                        <div className="px-4 pb-4">
+                            <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl p-4 shadow-lg relative overflow-hidden group">
+                                {/* Decorative elements */}
+                                <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-100 rounded-full opacity-20 group-hover:scale-150 transition-transform duration-500"></div>
+                                
+                                <div className="relative z-10">
+                                    <p className="text-xs text-slate-600 font-medium italic leading-relaxed text-justify">
+                                        <span className="text-3xl font-serif mr-1 leading-none align-text-top" style={{ color: '#E78B09' }}>"</span>
+                                        Dalam merancang dan menjalankan program dan kegiatan pesantren: lakukan se<span className="font-bold text-slate-800">IDEAL</span> mungkin, bila tidak bisa maka lakukan secara <span className="font-bold text-slate-800">REALISTIS</span>, dan jika masih belum bisa kerjakan secara <span className="font-bold text-slate-800">RASIONAL</span>.
+                                    </p>
+                                    <div className="mt-3 flex items-start gap-2 pt-2 border-t border-slate-100">
+                                        <div className="h-8 w-0.5 rounded-full" style={{ backgroundColor: '#E78B09' }}></div>
+                                        <div>
+                                            <p className="text-[10px] font-bold text-slate-800 uppercase tracking-wide">Kepala Pondok</p>
+                                            <p className="text-[10px] font-semibold text-slate-500">Pesantren Nurul Jadid</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t border-blue-500 bg-[#3073F1]"><div className="text-xs text-blue-200 text-center">&copy; {currentYear} Perencanaan Biktren</div></div>
+                    </aside>
+
+                    {/* MAIN CONTENT */}
+                    <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative">
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center h-full"><div className="loading-spinner mb-4"></div><p className="text-slate-500 animate-pulse">Menyiapkan Dashboard...</p></div>
+                        ) : error ? (
+                            <div className="flex items-center justify-center h-full bg-red-50 rounded-2xl p-8 text-center"><h2 className="text-xl font-bold text-slate-800">Terjadi Kesalahan</h2><p className="text-slate-600 mb-4">{error}</p><button onClick={() => setActiveTab('setting')} className="bg-indigo-600 text-white px-6 py-2 rounded-lg">Periksa Pengaturan</button></div>
+                        ) : (
+                            <>
+                                {activeTab !== 'setting' && activeTab !== 'dashboard' && (
+                                    <div className="flex flex-col xl:flex-row gap-4 mb-6">
+                                        <div className="relative flex-1">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="search" className="w-4 h-4"></i></div>
+                                            <input type="text" placeholder="Cari data..." className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                        </div>
+                                        <div className="relative min-w-[200px]">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="building" className="w-4 h-4"></i></div>
+                                            <select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm" value={selectedUnit} onChange={(e) => setSelectedUnit(e.target.value)}>
+                                                <option value="">Semua Unit Kerja</option>
+                                                {uniqueUnits.map((unit, idx) => <option key={idx} value={unit}>{unit}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="relative min-w-[200px]">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="user" className="w-4 h-4"></i></div>
+                                            <select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm" value={selectedPIC} onChange={(e) => setSelectedPIC(e.target.value)}>
+                                                <option value="">Semua PIC</option>
+                                                {uniquePICs.map((pic, idx) => <option key={idx} value={pic}>{pic}</option>)}
+                                            </select>
+                                        </div>
+                                        {/* NEW: Wilayah Kerja Filter */}
+                                        <div className="relative min-w-[200px]">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="map" className="w-4 h-4"></i></div>
+                                            <select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm" value={selectedWilayah} onChange={(e) => setSelectedWilayah(e.target.value)}>
+                                                <option value="">Semua Wilayah</option>
+                                                {uniqueWilayahs.map((wil, idx) => <option key={idx} value={wil}>{wil}</option>)}
+                                            </select>
+                                        </div>
+                                        {(selectedUnit || selectedPIC || selectedWilayah) && <button onClick={() => {setSelectedUnit(''); setSelectedPIC(''); setSelectedWilayah('');}} className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 text-sm font-medium transition">Reset</button>}
+                                    </div>
+                                )}
+
+                                {/* NEW: Render Mini Stats Below Filters for DPPK and RAB tabs */}
+                                {(activeTab === 'dppk' || activeTab === 'rab') && currentStats && (
+                                    <MiniStats 
+                                        programCount={currentStats.program} 
+                                        activityCount={currentStats.kegiatan} 
+                                        totalBudget={currentStats.anggaran}
+                                        type={activeTab === 'rab' ? 'RAB' : 'DPPK'}
+                                    />
+                                )}
+
+                                {activeTab === 'dashboard' && <DashboardView stats={stats} dataDPPK={filteredDPPK} dataRAB={filteredRAB} />}
+
+                                {activeTab === 'dppk' && (
+                                    <div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px]">
+                                        <div className="overflow-x-auto">
+                                            <table className="min-w-full divide-y divide-slate-200">
+                                                <thead className="bg-slate-50">
+                                                    <tr>
+                                                        {['NO', 'KATEGORI', 'KEGIATAN', 'INDIKATOR & SASARAN', 'WAKTU', 'ANGGARAN', 'PIC & UNIT', 'WILAYAH KERJA', 'AKSI'].map(h => (
+                                                            <th key={h} className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase whitespace-nowrap bg-slate-50">{h}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-slate-200">
+                                                    {filteredDPPK.map((item, idx) => (
+                                                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                            <td className="px-6 py-4 text-sm text-slate-500">{item.no}</td>
+                                                            <td className="px-6 py-4"><StatusBadge type={item.kategori} /></td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="text-sm font-medium text-slate-900">{item.kegiatan}</div>
+                                                                <div className="text-xs text-slate-500 mt-1">{item.program}</div>
+                                                                {item.kode_akup && <span className="inline-block mt-1 px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-mono rounded">{item.kode_akup}</span>}
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="text-xs text-slate-600 mb-1">🎯 {item.sasaran}</div>
+                                                                <div className="text-xs text-slate-500 italic truncate-cell" title={item.indikator}>{item.indikator}</div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-sm text-slate-600 truncate-cell" title={item.waktu}>{item.waktu}</td>
+                                                            <td className="px-6 py-4 text-right text-sm font-bold text-slate-800">{formatRupiah(item.anggaran)}</td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="text-sm text-slate-800">{item.pic}</div>
+                                                                <div className="text-xs text-indigo-600 font-medium">{item.unit_kerja}</div>
+                                                            </td>
+                                                            <td className="px-6 py-4">{item.wilayah_kerja && <span className={`px-2 py-1 text-xs font-bold rounded-md uppercase tracking-wider ${item.wilayah_kerja.toLowerCase() === 'putra' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>{item.wilayah_kerja}</span>}</td>
+                                                            <td className="px-6 py-4 text-center space-y-2">
+                                                                <button onClick={() => setSelectedActivity(item)} className="block w-full text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 font-medium transition">Detail</button>
+                                                                {item.link_berkas ? <a href={item.link_berkas} target="_blank" className="block w-full text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 font-medium transition text-center">BERKAS</a> : <button disabled className="block w-full text-xs bg-slate-100 text-slate-400 px-3 py-1.5 rounded-lg font-medium cursor-not-allowed">BERKAS</button>}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    {filteredDPPK.length === 0 && <tr><td colSpan="9" className="px-6 py-12 text-center text-slate-500">Tidak ada data ditemukan sesuai filter.</td></tr>}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'rab' && (
+                                    <div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px]">
+                                        <div className="overflow-x-auto">
+                                            <table className="min-w-full divide-y divide-slate-200">
+                                                <thead className="bg-slate-50">
+                                                    <tr>
+                                                        {['KEGIATAN', 'RINCIAN & SPEC', 'VOL', 'HARGA', 'TOTAL', 'PIC', 'WILAYAH KERJA'].map(h => <th key={h} className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase bg-slate-50">{h}</th>)}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-slate-200">
+                                                    {filteredRAB.map((item, idx) => (
+                                                        <tr key={idx} className="hover:bg-slate-50">
+                                                            <td className="px-6 py-4"><div className="text-sm font-medium text-slate-900 line-clamp-2">{item.kegiatan}</div><div className="text-xs text-slate-500 mt-1">{item.program}</div></td>
+                                                            <td className="px-6 py-4"><div className="text-sm font-medium text-slate-800">{item.rincian}</div><div className="text-xs text-slate-500 mt-1">{item.jumlah} {item.satuan_jml} x {item.frek} {item.satuan_frek}</div></td>
+                                                            <td className="px-6 py-4 text-center text-sm text-slate-600 bg-slate-50">{item.volume}</td>
+                                                            <td className="px-6 py-4 text-right text-sm text-slate-600">{formatRupiah(item.harga)}</td>
+                                                            <td className="px-6 py-4 text-right text-sm font-bold text-indigo-600">{formatRupiah(item.total)}</td>
+                                                            <td className="px-6 py-4"><div className="text-xs text-slate-800 font-medium">{item.pic}</div></td>
+                                                            <td className="px-6 py-4">{item.wilayah_kerja && <span className={`px-2 py-1 text-xs font-bold rounded-md uppercase tracking-wider ${item.wilayah_kerja.toLowerCase() === 'putra' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>{item.wilayah_kerja}</span>}</td>
+                                                        </tr>
+                                                    ))}
+                                                    {filteredRAB.length === 0 && <tr><td colSpan="7" className="px-6 py-12 text-center text-slate-500">Tidak ada data ditemukan sesuai filter.</td></tr>}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'calendar' && <CalendarView events={calendarEvents} setSelectedActivity={setSelectedActivity} />}
+                                {activeTab === 'setting' && <SettingView config={config} onSave={(d, r) => { localStorage.setItem('dppk_url', d); localStorage.setItem('rab_url', r); setConfig({dppk:d, rab:r}); }} />}
+                            </>
+                        )}
+                    </main>
+
+                    {selectedActivity && <ActivityDetailModal activity={selectedActivity} rabItems={getRABForActivity(selectedActivity.kegiatan)} onClose={() => setSelectedActivity(null)} />}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
