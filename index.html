@@ -42,6 +42,15 @@
             border: 1px solid #e2e8f0;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
         }
+        /* Glassmorphism Effect for Quote Card */
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
         /* Calendar Specific Styles */
         .calendar-grid {
             display: grid;
@@ -1090,21 +1099,26 @@
 
                         {/* QUOTE CARD - Hide when collapsed */}
                         {!isSidebarCollapsed && (
-                            <div className="px-4 pb-4">
-                                <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl p-4 shadow-lg relative overflow-hidden group">
-                                    {/* Decorative elements */}
-                                    <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-100 rounded-full opacity-20 group-hover:scale-150 transition-transform duration-500"></div>
+                            <div className="px-4 pb-4 max-w-xl w-full">
+                                <div className="rounded-xl p-6 relative overflow-hidden group glass-effect">
                                     
                                     <div className="relative z-10">
-                                        <p className="text-xs text-slate-600 font-medium italic leading-relaxed text-justify">
-                                            <span className="text-3xl font-serif mr-1 leading-none align-text-top" style={{ color: '#E78B09' }}>"</span>
-                                            Dalam merancang dan menjalankan program dan kegiatan pesantren: lakukan se<span className="font-bold text-slate-800">IDEAL</span> mungkin, bila tidak bisa maka lakukan secara <span className="font-bold text-slate-800">REALISTIS</span>, dan jika masih belum bisa kerjakan secara <span className="font-bold text-slate-800">RASIONAL</span>.
+                                        {/* Kutipan utama */}
+                                        <p className="text-sm text-white font-medium italic leading-relaxed text-justify">
+                                            {/* Tanda kutip besar, berwarna putih */}
+                                            <span className="text-4xl font-serif mr-1 leading-none align-text-top text-white" style={{color: '#E78B09'}}>"</span>
+                                            <br/>
+                                            {/* Jarak 1 enter dari tanda kutip sudah dipenuhi dengan <br> dan margin atas dari teks quote */}
+                                            Dalam merencanakan dan melaksanakan program dan kegiatan pesantren: lakukan se<span className="font-bold text-white">IDEAL</span> mungkin, bila tidak bisa maka lakukan secara <span className="font-bold text-white">REALISTIS</span>, dan jika masih belum bisa lakukan secara <span className="font-bold text-white">RASIONAL</span>".
                                         </p>
-                                        <div className="mt-3 flex items-start gap-2 pt-2 border-t border-slate-100">
-                                            <div className="h-8 w-0.5 rounded-full" style={{ backgroundColor: '#E78B09' }}></div>
+
+                                        {/* Informasi Penulis */}
+                                        <div className="mt-4 flex items-start gap-3 pt-3 border-t border-white/30">
+                                            {/* Garis pembatas vertikal, berwarna putih */}
+                                            <div className="h-10 w-0.5 rounded-full bg-white"></div>
                                             <div>
-                                                <p className="text-[10px] font-bold text-slate-800 uppercase tracking-wide">Kepala Pondok</p>
-                                                <p className="text-[10px] font-semibold text-slate-500">Pesantren Nurul Jadid</p>
+                                                <p className="text-[10px] font-bold text-white uppercase tracking-wider">Kepala Pondok</p>
+                                                <p className="text-[10px] font-semibold text-white/80">Pesantren Nurul Jadid</p>
                                             </div>
                                         </div>
                                     </div>
