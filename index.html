@@ -318,6 +318,61 @@
             </div>
         );
 
+        // --- NEW COMPONENTS FOR PAGINATION ---
+        const LengthMenu = ({ value, onChange }) => (
+            <div className="flex items-center gap-2 mb-4 bg-white p-2 rounded-lg border border-slate-200 shadow-sm w-fit">
+                <span className="text-xs font-medium text-slate-600">Tampilkan</span>
+                <select 
+                    value={value} 
+                    onChange={onChange}
+                    className="border border-slate-300 rounded-md py-1 px-2 text-xs font-bold text-indigo-600 bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+                >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={250}>250</option>
+                    <option value={500}>500</option>
+                    <option value={1000}>1000</option>
+                </select>
+                <span className="text-xs font-medium text-slate-600">data per halaman</span>
+            </div>
+        );
+
+        const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            if (totalItems === 0) return null;
+            
+            const indexOfLastItem = currentPage * itemsPerPage;
+            const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+            
+            return (
+                <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-slate-200 bg-white gap-4">
+                    <div className="text-xs text-slate-500">
+                        Menampilkan <span className="font-bold text-slate-700">{indexOfFirstItem + 1}</span> sampai <span className="font-bold text-slate-700">{Math.min(indexOfLastItem, totalItems)}</span> dari <span className="font-bold text-slate-700">{totalItems}</span> data
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                            disabled={currentPage === 1}
+                            className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                        >
+                            <i data-lucide="chevron-left" className="w-4 h-4"></i>
+                        </button>
+                        <span className="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 rounded-lg border border-indigo-100 min-w-[80px] text-center">
+                            Hal. {currentPage} / {totalPages}
+                        </span>
+                        <button 
+                            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+                            disabled={currentPage === totalPages}
+                            className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                        >
+                            <i data-lucide="chevron-right" className="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
         // DASHBOARD VIEW
         const DashboardView = ({ stats, dataDPPK, dataRAB }) => {
             const totalProgramUnique = useMemo(() => new Set(dataDPPK.map(d => d.program)).size, [dataDPPK]);
@@ -942,6 +997,10 @@
             const [selectedActivity, setSelectedActivity] = useState(null);
             const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+            // Pagination State
+            const [itemsPerPage, setItemsPerPage] = useState(25);
+            const [currentPage, setCurrentPage] = useState(1);
+
             useEffect(() => {
                 const fetchData = async () => {
                     setLoading(true);
@@ -1056,6 +1115,11 @@
                         matchesMonth;
             }), [dataRAB, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedMonth, activityMonthMap]);
 
+            // Reset pagination when filters change
+            useEffect(() => {
+                setCurrentPage(1);
+            }, [activeTab, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedMonth, itemsPerPage]);
+
             // Filtered Stats Calculation
             const currentStats = useMemo(() => {
                 if (activeTab === 'dppk') {
@@ -1107,7 +1171,7 @@
                 if (window.lucide) {
                     window.lucide.createIcons();
                 }
-            }, [activeTab, loading, selectedActivity, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedMonth, dataDPPK, dataRAB, currentStats, isSidebarCollapsed]);
+            }, [activeTab, loading, selectedActivity, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedMonth, dataDPPK, dataRAB, currentStats, isSidebarCollapsed, currentPage, itemsPerPage]);
 
             // Define Menu Items for Mapping
             const menuItems = [
@@ -1120,6 +1184,13 @@
 
             // Helper for month options
             const monthOptions = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+            // Calculate current items for pagination
+            const getPaginatedData = (data) => {
+                const indexOfLastItem = currentPage * itemsPerPage;
+                const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+                return data.slice(indexOfFirstItem, indexOfLastItem);
+            };
 
             return (
                 <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 font-sans">
@@ -1285,8 +1356,11 @@
                                 {activeTab === 'dashboard' && <DashboardView stats={stats} dataDPPK={filteredDPPK} dataRAB={filteredRAB} />}
 
                                 {activeTab === 'dppk' && (
-                                    <div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px]">
-                                        <div className="overflow-x-auto">
+                                    <div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px] flex flex-col">
+                                        <div className="p-4 border-b border-slate-100">
+                                            <LengthMenu value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} />
+                                        </div>
+                                        <div className="overflow-x-auto flex-1">
                                             <table className="min-w-full divide-y divide-slate-200">
                                                 <thead className="bg-slate-50">
                                                     <tr>
@@ -1296,7 +1370,7 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-slate-200">
-                                                    {filteredDPPK.map((item, idx) => (
+                                                    {getPaginatedData(filteredDPPK).map((item, idx) => (
                                                         <tr key={idx} className="hover:bg-slate-50 transition-colors">
                                                             <td className="px-6 py-4 text-sm text-slate-500">{item.no}</td>
                                                             <td className="px-6 py-4"><StatusBadge type={item.kategori} /></td>
@@ -1329,12 +1403,21 @@
                                                 </tbody>
                                             </table>
                                         </div>
+                                        <Pagination 
+                                            totalItems={filteredDPPK.length} 
+                                            itemsPerPage={itemsPerPage} 
+                                            currentPage={currentPage} 
+                                            onPageChange={setCurrentPage} 
+                                        />
                                     </div>
                                 )}
 
                                 {activeTab === 'rab' && (
-                                    <div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px]">
-                                        <div className="overflow-x-auto">
+                                    <div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px] flex flex-col">
+                                        <div className="p-4 border-b border-slate-100">
+                                            <LengthMenu value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} />
+                                        </div>
+                                        <div className="overflow-x-auto flex-1">
                                             <table className="min-w-full divide-y divide-slate-200">
                                                 <thead className="bg-slate-50">
                                                     <tr>
@@ -1342,7 +1425,7 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-slate-200">
-                                                    {filteredRAB.map((item, idx) => (
+                                                    {getPaginatedData(filteredRAB).map((item, idx) => (
                                                         <tr key={idx} className="hover:bg-slate-50">
                                                             <td className="px-6 py-4"><div className="text-sm font-medium text-slate-900 line-clamp-2">{item.kegiatan}</div><div className="text-xs text-slate-500 mt-1">{item.program}</div></td>
                                                             <td className="px-6 py-4"><div className="text-sm font-medium text-slate-800">{item.rincian}</div><div className="text-xs text-slate-500 mt-1">{item.jumlah} {item.satuan_jml} x {item.frek} {item.satuan_frek}</div></td>
@@ -1357,6 +1440,12 @@
                                                 </tbody>
                                             </table>
                                         </div>
+                                        <Pagination 
+                                            totalItems={filteredRAB.length} 
+                                            itemsPerPage={itemsPerPage} 
+                                            currentPage={currentPage} 
+                                            onPageChange={setCurrentPage} 
+                                        />
                                     </div>
                                 )}
 
