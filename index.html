@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perencanaan Biktren</title>
+    <title>Aplikasi Perencanaan Biktren</title>
     
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -12,9 +12,6 @@
     
     <!-- PapaParse untuk CSV -->
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
-    
-    <!-- Chart.js (Optional if needed later) -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -156,8 +153,21 @@
             border: 4px solid transparent;
         }
         
-        .modal-enter { opacity: 0; transform: scale(0.95); }
-        .modal-enter-active { opacity: 1; transform: scale(1); transition: opacity 300ms, transform 300ms; }
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        @keyframes modalEnter {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-modal-enter {
+            animation: modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
     </style>
 </head>
 <body>
@@ -1030,7 +1040,11 @@
             const getRABForActivity = (kegiatanName) => dataRAB.filter(item => item.kegiatan && item.kegiatan.trim().toLowerCase() === kegiatanName.trim().toLowerCase());
 
             // Icon handling: Added more dependencies to ensure icons refresh on filter changes
-            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [activeTab, loading, selectedActivity, searchTerm, selectedUnit, selectedPIC, selectedWilayah, dataDPPK, dataRAB, currentStats, isSidebarCollapsed]);
+            useEffect(() => { 
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [activeTab, loading, selectedActivity, searchTerm, selectedUnit, selectedPIC, selectedWilayah, dataDPPK, dataRAB, currentStats, isSidebarCollapsed]);
 
             // Define Menu Items for Mapping
             const menuItems = [
@@ -1053,10 +1067,10 @@
                                 {!isSidebarCollapsed && <div><h1 className="font-bold text-white leading-tight">Perencanaan<br/>Biktren</h1></div>}
                             </div>
                             {!isSidebarCollapsed && (
-                                <button onClick={() => setIsSidebarCollapsed(true)} className="text-blue-200 hover:text-white p-1 rounded hover:bg-blue-500/50 transition">
-                                    <i data-lucide="chevron-left" className="w-5 h-5"></i>
-                                </button>
-                            )}
+                             <button onClick={() => setIsSidebarCollapsed(false)} className="w-full py-3 text-blue-200 hover:text-white flex justify-center hover:bg-blue-500/50 transition">
+                                <i data-lucide="chevron-right" className="w-5 h-5"></i>
+                            </button>
+                        )}
                         </div>
                         
                         {/* Collapsed State Open Button */}
@@ -1066,7 +1080,7 @@
                             </button>
                         )}
 
-                        <nav className="flex-1 p-4 space-y-2 overflow-y-auto hide-scrollbar">
+                        <nav className="flex-1 p-4 space-y-2 overflow-y-auto hide-scrollbar flex flex-col">
                             {/* Dashboard Item */}
                             <button onClick={() => setActiveTab('dashboard')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'dashboard' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Dashboard' : ''}>
                                 <i data-lucide="layout-dashboard" className="w-5 h-5 shrink-0"></i> 
@@ -1095,38 +1109,37 @@
                                     {!isSidebarCollapsed && <span>Pengaturan</span>}
                                 </button>
                             </div>
-                        </nav>
 
-                        {/* QUOTE CARD - Hide when collapsed */}
-                        {!isSidebarCollapsed && (
-                            <div className="px-4 pb-4 max-w-xl w-full">
-                                <div className="rounded-xl p-6 relative overflow-hidden group glass-effect">
-                                    
-                                    <div className="relative z-10">
-                                        {/* Kutipan utama */}
-                                        <p className="text-sm text-white font-medium italic leading-relaxed text-justify">
-                                            {/* Tanda kutip besar, berwarna putih */}
-                                            <span className="text-4xl font-serif mr-1 leading-none align-text-top text-white" style={{color: '#E78B09'}}>"</span>
-                                            <br/>
-                                            {/* Jarak 1 enter dari tanda kutip sudah dipenuhi dengan <br> dan margin atas dari teks quote */}
-                                            Dalam merencanakan dan melaksanakan program dan kegiatan pesantren: lakukan se<span className="font-bold text-white">IDEAL</span> mungkin, bila tidak bisa maka lakukan secara <span className="font-bold text-white">REALISTIS</span>, dan jika masih belum bisa lakukan secara <span className="font-bold text-white">RASIONAL</span>".
-                                        </p>
+                            {/* QUOTE CARD - Moved inside nav so it scrolls with the menu */}
+                            {!isSidebarCollapsed && (
+                                <div className="mt-6 w-full">
+                                    <div className="rounded-xl p-6 relative overflow-hidden group glass-effect">
+                                        <div className="relative z-10">
+                                            {/* Kutipan utama */}
+                                            <p className="text-sm text-white font-medium italic leading-relaxed text-justify">
+                                                {/* Tanda kutip besar, berwarna putih */}
+                                                <span className="text-4xl font-serif mr-1 leading-none align-text-top text-white" style={{color: '#E78B09'}}>"</span>
+                                                <br/>
+                                                {/* Jarak 1 enter dari tanda kutip sudah dipenuhi dengan <br> dan margin atas dari teks quote */}
+                                                Dalam merencanakan dan melaksanakan program dan kegiatan pesantren: lakukan se<span className="font-bold text-white">IDEAL</span> mungkin, bila tidak bisa maka lakukan secara <span className="font-bold text-white">REALISTIS</span>, dan jika masih belum bisa lakukan secara <span className="font-bold text-white">RASIONAL</span>".
+                                            </p>
 
-                                        {/* Informasi Penulis */}
-                                        <div className="mt-4 flex items-start gap-3 pt-3 border-t border-white/30">
-                                            {/* Garis pembatas vertikal, berwarna putih */}
-                                            <div className="h-10 w-0.5 rounded-full bg-white"></div>
-                                            <div>
-                                                <p className="text-[10px] font-bold text-white uppercase tracking-wider">Kepala Pondok</p>
-                                                <p className="text-[10px] font-semibold text-white/80">Pesantren Nurul Jadid</p>
+                                            {/* Informasi Penulis */}
+                                            <div className="mt-4 flex items-start gap-3 pt-3 border-t border-white/30">
+                                                {/* Garis pembatas vertikal, berwarna putih */}
+                                                <div className="h-10 w-0.5 rounded-full bg-white"></div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-white uppercase tracking-wider">Kepala Pondok</p>
+                                                    <p className="text-[10px] font-semibold text-white/80">Pesantren Nurul Jadid</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </nav>
 
-                        {!isSidebarCollapsed && <div className="p-4 border-t border-blue-500 bg-[#3073F1]"><div className="text-xs text-blue-200 text-center">&copy; {currentYear} Perencanaan Biktren</div></div>}
+                        {!isSidebarCollapsed && <div className="p-4 border-t border-blue-500 bg-[#3073F1]"><div className="text-xs text-blue-200 text-center">© {currentYear} Perencanaan Biktren</div></div>}
                     </aside>
 
                     {/* MOBILE BOTTOM NAVIGATION */}
