@@ -16,7 +16,6 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Expose Firebase modules to window so React can access them
         window.firebaseModules = { 
             initializeApp, 
             getAuth, 
@@ -45,9 +44,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .glass-card { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         .glass-effect { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e2e8f0; }
@@ -61,8 +59,6 @@
         .truncate-cell { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .menu-item:hover { transform: translateX(4px); }
         .menu-item.active { background: #ffffff; color: #3073F1; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .mobile-nav-item.active { color: #3073F1; }
-        .mobile-nav-item.active .icon-container { transform: translateY(-20px); background-color: #3073F1; color: white; border: 4px solid #f1f5f9; }
         
         /* Chat Styles */
         .chat-bubble { max-width: 80%; padding: 12px 16px; border-radius: 1rem; position: relative; }
@@ -76,20 +72,32 @@
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes modalEnter { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .animate-modal-enter { animation: modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* MODERN MOBILE NAVIGATION */
+        .mobile-nav-wrapper { position: fixed; bottom: 24px; left: 0; right: 0; z-index: 999; display: flex; justify-content: center; pointer-events: none; }
+        .mobile-nav-container { pointer-events: auto; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); border-radius: 28px; padding: 6px; display: flex; align-items: center; gap: 4px; max-width: 92%; overflow-x: auto; scrollbar-width: none; }
+        .mobile-nav-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 60px; height: 60px; border-radius: 22px; color: #64748b; background: transparent; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); flex-shrink: 0; }
+        .mobile-nav-item.active { color: #ffffff; background: #3073F1; box-shadow: 0 8px 20px -6px rgba(48, 115, 241, 0.6); transform: translateY(-8px) scale(1.05); }
+        .mobile-nav-item:not(.active):active { transform: scale(0.95); }
+        .mobile-nav-item .icon { width: 22px; height: 22px; margin-bottom: 2px; }
+        .mobile-nav-item span { font-size: 9px; font-weight: 600; opacity: 0.8; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+        .mobile-nav-item.active span { opacity: 1; font-weight: 700; }
+        @media (max-width: 768px) { .main-content { padding-bottom: 120px !important; } }
     </style>
 </head>
 <body>
     <div id="root"></div>
+    <!-- MODAL ROOT UNTUK REACT PORTAL -->
+    <div id="modal-root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // --- FIREBASE CONFIGURATION (Diperbarui dengan Config User) ---
+        // --- FIREBASE CONFIGURATION ---
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
             apiKey: "AIzaSyCnBr_hChJ22sMTrELd-nIH3YUC2Zj8Pfg",
             authDomain: "biktren-web.firebaseapp.com",
@@ -101,14 +109,12 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'biktren-web';
         
         let auth, db, provider;
-        
         if (window.firebaseModules && Object.keys(firebaseConfig).length > 0) {
             const { initializeApp, getAuth, getFirestore, GoogleAuthProvider } = window.firebaseModules;
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
             provider = new GoogleAuthProvider();
-            // Add scope for Gemini AI (Vertex AI/Generative Language)
             provider.addScope('https://www.googleapis.com/auth/generative-language.retriever.readonly');
             provider.addScope('https://www.googleapis.com/auth/cloud-platform'); 
         }
@@ -118,10 +124,8 @@
         const DEFAULT_RAB = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQsyhdflwwzu6_vAeJVMO8JccuK_riBbDa45q1m6xWGe0Bq5Ol-AEwzuCULArWA-J_8JoSlqWH8yoL4/pub?gid=774580455&single=true&output=csv";
         const currentYear = new Date().getFullYear();
         const monthOptions = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-
         const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num || 0);
         const getMonthName = (idx) => monthOptions[idx] || "";
-        
         const parseIndonesianDate = (str) => {
             if (!str) return null;
             const monthMap = { 'januari': 'January', 'februari': 'February', 'maret': 'March', 'april': 'April', 'mei': 'May', 'juni': 'June', 'juli': 'July', 'agustus': 'August', 'september': 'September', 'oktober': 'October', 'november': 'November', 'desember': 'December', 'jan': 'Jan', 'feb': 'Feb', 'mar': 'Mar', 'apr': 'Apr', 'mei': 'May', 'jun': 'Jun', 'jul': 'Jul', 'agu': 'Aug', 'sep': 'Sep', 'okt': 'Oct', 'nov': 'Nov', 'des': 'Dec' };
@@ -132,77 +136,41 @@
             const d = new Date(translatedParts.join(' '));
             return isNaN(d) ? null : d;
         };
+        const formatHijri = (date) => { try { return new Intl.DateTimeFormat('id-ID-u-ca-islamic', { day: 'numeric', month: 'long' }).format(date); } catch (e) { return ""; } };
+        const getExecutionCount = (waktuStr) => !waktuStr ? 0 : waktuStr.split(',').map(s => s.trim()).filter(s => s.length > 0).length;
 
-        const formatHijri = (date) => {
-            try { return new Intl.DateTimeFormat('id-ID-u-ca-islamic', { day: 'numeric', month: 'long' }).format(date); } catch (e) { return ""; }
-        };
-
-        const getExecutionCount = (waktuStr) => {
-            if (!waktuStr) return 0;
-            return waktuStr.split(',').map(s => s.trim()).filter(s => s.length > 0).length;
+        // --- COMPONENT: MODAL PORTAL ---
+        const ModalPortal = ({ children }) => {
+            const modalRoot = document.getElementById('modal-root');
+            if (!modalRoot) return null;
+            return ReactDOM.createPortal(children, modalRoot);
         };
 
         // --- SHARED COMPONENTS ---
         const StatusBadge = ({ type }) => (
             <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${type === 'Rutin' ? 'bg-blue-100 text-blue-700 border-blue-200' : type === 'Pengadaan' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-purple-100 text-purple-700 border-purple-200'}`}>{type || 'Umum'}</span>
         );
-
         const LengthMenu = ({ value, onChange }) => (
-            <div className="flex items-center gap-2 mb-4 bg-white p-2 rounded-lg border border-slate-200 shadow-sm w-fit">
-                <span className="text-xs font-medium text-slate-600">Tampilkan</span>
-                <select value={value} onChange={onChange} className="border border-slate-300 rounded-md py-1 px-2 text-xs font-bold text-indigo-600 bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
-                    {[25, 50, 100, 250, 500, 1000].map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-                <span className="text-xs font-medium text-slate-600">data</span>
-            </div>
+            <div className="flex items-center gap-2 mb-4 bg-white p-2 rounded-lg border border-slate-200 shadow-sm w-fit"><span className="text-xs font-medium text-slate-600">Tampilkan</span><select value={value} onChange={onChange} className="border border-slate-300 rounded-md py-1 px-2 text-xs font-bold text-indigo-600 bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">{[25, 50, 100, 250, 500, 1000].map(v => <option key={v} value={v}>{v}</option>)}</select><span className="text-xs font-medium text-slate-600">data</span></div>
         );
-
         const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             if (totalItems === 0) return null;
-            const start = (currentPage - 1) * itemsPerPage + 1;
-            const end = Math.min(currentPage * itemsPerPage, totalItems);
-            
-            return (
-                <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-slate-200 bg-white gap-4">
-                    <div className="text-xs text-slate-500">Menampilkan <span className="font-bold text-slate-700">{start}</span> - <span className="font-bold text-slate-700">{end}</span> dari <span className="font-bold text-slate-700">{totalItems}</span></div>
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30"><i data-lucide="chevron-left" className="w-4 h-4"></i></button>
-                        <span className="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 rounded-lg border border-indigo-100">Hal. {currentPage} / {totalPages}</span>
-                        <button onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30"><i data-lucide="chevron-right" className="w-4 h-4"></i></button>
-                    </div>
-                </div>
-            );
+            const start = (currentPage - 1) * itemsPerPage + 1; const end = Math.min(currentPage * itemsPerPage, totalItems);
+            return (<div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-slate-200 bg-white gap-4"><div className="text-xs text-slate-500">Menampilkan <span className="font-bold text-slate-700">{start}</span> - <span className="font-bold text-slate-700">{end}</span> dari <span className="font-bold text-slate-700">{totalItems}</span></div><div className="flex items-center gap-2"><button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30"><i data-lucide="chevron-left" className="w-4 h-4"></i></button><span className="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 rounded-lg border border-indigo-100">Hal. {currentPage} / {totalPages}</span><button onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30"><i data-lucide="chevron-right" className="w-4 h-4"></i></button></div></div>);
         };
-
         const MiniStats = ({ programCount, activityCount, totalBudget, type }) => (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 animate-fade-in">
-                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #3073F1 0%, #4a84f3 100%)' }}>
-                    <div><p className="text-xs font-semibold text-blue-100 uppercase">Total Program</p><h3 className="text-xl font-bold text-white">{programCount}</h3></div>
-                    <div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="layers" className="w-5 h-5"></i></div>
-                </div>
-                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #0BA875 0%, #20c58e 100%)' }}>
-                    <div><p className="text-xs font-semibold text-emerald-100 uppercase">Total Kegiatan {type === 'RAB' ? '(Unik)' : ''}</p><h3 className="text-xl font-bold text-white">{activityCount}</h3></div>
-                    <div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="activity" className="w-5 h-5"></i></div>
-                </div>
-                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #E78B09 0%, #f5a636 100%)' }}>
-                    <div><p className="text-xs font-semibold text-amber-100 uppercase">Total Anggaran</p><h3 className="text-xl font-bold text-white">{formatRupiah(totalBudget)}</h3></div>
-                    <div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="wallet" className="w-5 h-5"></i></div>
-                </div>
+                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #3073F1 0%, #4a84f3 100%)' }}><div><p className="text-xs font-semibold text-blue-100 uppercase">Total Program</p><h3 className="text-xl font-bold text-white">{programCount}</h3></div><div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="layers" className="w-5 h-5"></i></div></div>
+                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #0BA875 0%, #20c58e 100%)' }}><div><p className="text-xs font-semibold text-emerald-100 uppercase">Total Kegiatan {type === 'RAB' ? '(Unik)' : ''}</p><h3 className="text-xl font-bold text-white">{activityCount}</h3></div><div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="activity" className="w-5 h-5"></i></div></div>
+                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #E78B09 0%, #f5a636 100%)' }}><div><p className="text-xs font-semibold text-amber-100 uppercase">Total Anggaran</p><h3 className="text-xl font-bold text-white">{formatRupiah(totalBudget)}</h3></div><div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="wallet" className="w-5 h-5"></i></div></div>
             </div>
         );
-
         const StatsTable = ({ title, icon, data, colorClass, countLabel, count }) => (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
-                <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                    <div className="flex items-center gap-3"><div className={`p-2 rounded-lg ${colorClass} bg-opacity-20 text-current`}>{icon}</div><h3 className="text-lg font-bold text-slate-800">{title}</h3></div>
-                    {countLabel && <span className="text-xs font-bold px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 shadow-sm">{countLabel}: {count}</span>}
-                </div>
-                <div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-100 table-fixed"><thead className="bg-slate-50"><tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[35%]">Nama</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[12%]">Jml Program</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[12%]">Jml Kegiatan</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[20%]">Total Anggaran</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[21%]">Persentase</th></tr></thead><tbody className="divide-y divide-slate-100">{data.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50 transition"><td className="px-6 py-4 text-sm font-medium text-slate-800 truncate" title={item.name}>{item.name}</td><td className="px-6 py-4 text-center text-sm text-slate-600">{item.programCount}</td><td className="px-6 py-4 text-center text-sm text-slate-600">{item.activityCount}</td><td className="px-6 py-4 text-right text-sm font-bold text-slate-800">{formatRupiah(item.budget)}</td><td className="px-6 py-4 align-middle"><div className="flex items-center justify-end gap-2"><div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden max-w-[100px]"><div className={`h-full rounded-full ${colorClass.replace('text-', 'bg-')}`} style={{ width: `${item.percentage}%` }}></div></div><span className="text-xs font-medium text-slate-500 w-10 text-right">{item.percentage.toFixed(1)}%</span></div></td></tr>))}</tbody></table></div>
-            </div>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6"><div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50"><div className="flex items-center gap-3"><div className={`p-2 rounded-lg ${colorClass} bg-opacity-20 text-current`}>{icon}</div><h3 className="text-lg font-bold text-slate-800">{title}</h3></div>{countLabel && <span className="text-xs font-bold px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 shadow-sm">{countLabel}: {count}</span>}</div><div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-100 table-fixed"><thead className="bg-slate-50"><tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[35%]">Nama</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[12%]">Jml Program</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[12%]">Jml Kegiatan</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[20%]">Total Anggaran</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[21%]">Persentase</th></tr></thead><tbody className="divide-y divide-slate-100">{data.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50 transition"><td className="px-6 py-4 text-sm font-medium text-slate-800 truncate" title={item.name}>{item.name}</td><td className="px-6 py-4 text-center text-sm text-slate-600">{item.programCount}</td><td className="px-6 py-4 text-center text-sm text-slate-600">{item.activityCount}</td><td className="px-6 py-4 text-right text-sm font-bold text-slate-800">{formatRupiah(item.budget)}</td><td className="px-6 py-4 align-middle"><div className="flex items-center justify-end gap-2"><div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden max-w-[100px]"><div className={`h-full rounded-full ${colorClass.replace('text-', 'bg-')}`} style={{ width: `${item.percentage}%` }}></div></div><span className="text-xs font-medium text-slate-500 w-10 text-right">{item.percentage.toFixed(1)}%</span></div></td></tr>))}</tbody></table></div></div>
         );
 
-        // --- SUB-VIEWS (DASHBOARD & TABLES) ---
+        // --- SUB-VIEW COMPONENTS ---
 
         const DashboardView = ({ dataDPPK }) => {
             const totalAnggaran = useMemo(() => dataDPPK.reduce((acc, curr) => acc + (curr.anggaran || 0), 0), [dataDPPK]);
@@ -226,6 +194,7 @@
                 });
                 return Object.values(groups).map(g => ({ ...g, programCount: g.programs.size, percentage: totalAnggaran > 0 ? (g.budget / totalAnggaran) * 100 : 0 })).sort((a, b) => b.budget - a.budget);
             };
+            const topActivities = useMemo(() => [...dataDPPK].sort((a, b) => b.anggaran - a.anggaran).slice(0, 10), [dataDPPK]);
 
             return (
                 <div className="animate-fade-in space-y-8 pb-10">
@@ -233,6 +202,7 @@
                     <StatsTable title="Informasi Berdasarkan Wilayah Kerja" icon={<i data-lucide="map" className="w-5 h-5"></i>} data={getGroupStats('wilayah_kerja')} colorClass="text-blue-600" countLabel="Jumlah Wilayah" count={getGroupStats('wilayah_kerja').length} />
                     <StatsTable title="Informasi Berdasarkan Unit Kerja" icon={<i data-lucide="building-2" className="w-5 h-5"></i>} data={getGroupStats('unit_kerja')} colorClass="text-emerald-600" countLabel="Jumlah Unit" count={getGroupStats('unit_kerja').length} />
                     <StatsTable title="Informasi Berdasarkan PIC" icon={<i data-lucide="users" className="w-5 h-5"></i>} data={getGroupStats('pic')} colorClass="text-purple-600" countLabel="Jumlah PIC" count={getGroupStats('pic').length} />
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6"><div className="p-5 border-b border-slate-100 flex items-center gap-3 bg-slate-50"><div className="p-2 bg-amber-100 text-amber-600 rounded-lg"><i data-lucide="trending-up" className="w-5 h-5"></i></div><h3 className="text-lg font-bold text-slate-800">10 Kegiatan dengan Anggaran Terbesar</h3></div><div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-100"><thead className="bg-slate-50"><tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Kegiatan</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Unit Kerja</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase">Anggaran</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase">% dari Total</th></tr></thead><tbody className="divide-y divide-slate-100">{topActivities.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50 transition"><td className="px-6 py-4"><div className="text-sm font-medium text-slate-900 line-clamp-1" title={item.kegiatan}>{item.kegiatan}</div><div className="text-xs text-slate-500">{item.program}</div></td><td className="px-6 py-4 text-sm text-slate-500">{item.unit_kerja}</td><td className="px-6 py-4 text-right text-sm font-bold text-indigo-600">{formatRupiah(item.anggaran)}</td><td className="px-6 py-4 text-center text-sm text-slate-500 font-mono">{totalAnggaran > 0 ? ((item.anggaran / totalAnggaran) * 100).toFixed(2) : 0}%</td></tr>))}</tbody></table></div></div>
                 </div>
             );
         };
@@ -251,8 +221,6 @@
             const [itemsPerPage, setItemsPerPage] = useState(25); const [currentPage, setCurrentPage] = useState(1); useEffect(() => setCurrentPage(1), [data.length]); const paginatedData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
             return (<div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px] flex flex-col"><div className="p-4 border-b border-slate-100"><LengthMenu value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} /></div><div className="overflow-x-auto flex-1"><table className="min-w-full divide-y divide-slate-200"><thead className="bg-slate-50"><tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[15%]">BULAN & TAHUN</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[30%]">KEGIATAN & PROGRAM</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[25%]">DETAIL PELAKSANAAN</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[15%]">ANGGARAN BULANAN</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[15%]">PIC & UNIT</th></tr></thead><tbody className="bg-white divide-y divide-slate-200">{paginatedData.map((item, idx) => { const rabItems = rawRAB.filter(r => (r.kegiatan || '').trim().toLowerCase() === (item.kegiatan || '').trim().toLowerCase()); const subtotalRAB = rabItems.reduce((acc, curr) => acc + curr.total, 0); return (<React.Fragment key={idx}><tr className="hover:bg-slate-50 transition-colors border-l-4 border-l-indigo-500 border-b border-slate-100"><td className="px-6 py-4 align-top"><div className="flex flex-col items-start gap-1"><div className="flex items-center gap-2"><div className="bg-indigo-50 text-indigo-700 p-2 rounded-lg border border-indigo-100"><i data-lucide="calendar" className="w-4 h-4"></i></div><span className="text-sm font-bold text-slate-800 uppercase">{item.monthName}</span></div><span className="text-xs text-slate-500 font-mono ml-10">{item.displayDate}</span></div></td><td className="px-6 py-4 align-top"><div className="mb-2"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded uppercase tracking-wider">{item.kategori || 'Kegiatan'}</span>{item.kode_akup && <span className="ml-2 text-slate-400 text-[10px] font-mono">{item.kode_akup}</span>}</div><div className="text-sm font-bold text-slate-900 leading-tight mb-1">{item.kegiatan}</div><div className="text-xs text-slate-500 flex items-center gap-1"><i data-lucide="layers" className="w-3 h-3"></i> {item.program}</div></td><td className="px-6 py-4 align-top space-y-3"><div className="bg-slate-50 p-2 rounded border border-slate-100"><div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Indikator</div><div className="text-xs text-slate-700 italic">{item.indikator}</div></div></td><td className="px-6 py-4 align-top text-right"><div className="text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 inline-block">{formatRupiah(item.monthlyBudget)}</div><div className="text-[10px] text-slate-400 mt-1 italic">/ Bulan Pelaksanaan</div></td><td className="px-6 py-4 align-top"><div className="flex flex-col gap-1"><div className="text-sm font-bold text-slate-800">{item.pic}</div><div className="text-xs text-indigo-600 font-medium">{item.unit_kerja}</div></div></td></tr>{rabItems.length > 0 && (<tr className="bg-slate-50/30"><td colSpan="5" className="px-6 py-4 pl-12"><div className="flex gap-4"><div className="text-slate-300 pt-2"><i data-lucide="corner-down-right" className="w-6 h-6"></i></div><div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg overflow-hidden shadow-sm"><div className="px-4 py-2 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase flex justify-between items-center"><span className="flex items-center gap-2"><i data-lucide="shopping-cart" className="w-3 h-3"></i> Rincian Anggaran Biaya</span></div><table className="min-w-full divide-y divide-slate-100"><thead className="bg-slate-50"><tr><th className="px-4 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Item</th><th className="px-4 py-2 text-center text-[10px] font-bold text-slate-500 uppercase">Vol</th><th className="px-4 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Harga</th><th className="px-4 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Total</th></tr></thead><tbody className="divide-y divide-slate-50">{rabItems.map((r, rIdx) => (<tr key={rIdx}><td className="px-4 py-2 text-xs text-slate-700 font-medium">{r.rincian}<div className="text-[10px] text-slate-400 font-normal">{r.jumlah} {r.satuan_jml} x {r.frek} {r.satuan_frek}</div></td><td className="px-4 py-2 text-center text-xs text-slate-600 font-mono bg-slate-50/50">{r.volume}</td><td className="px-4 py-2 text-right text-xs text-slate-600 font-mono">{formatRupiah(r.harga)}</td><td className="px-4 py-2 text-right text-xs font-bold text-indigo-600 font-mono">{formatRupiah(r.total)}</td></tr>))}<tr className="bg-slate-100 border-t border-slate-200"><td colSpan="3" className="px-4 py-2 text-right text-[10px] font-bold text-slate-600 uppercase">Total RAB Kegiatan Ini</td><td className="px-4 py-2 text-right text-xs font-bold text-slate-800 font-mono">{formatRupiah(subtotalRAB)}</td></tr></tbody></table></div></div></td></tr>)}</React.Fragment>); })}</tbody></table></div><Pagination totalItems={data.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} /></div>);
         };
-
-        // --- CALENDAR, AI & SETTINGS COMPONENTS ---
 
         const CalendarView = ({ events, setSelectedActivity }) => {
             const [date, setDate] = useState(new Date()); const [viewMode, setViewMode] = useState('month'); const daysNames = ['M', 'S', 'S', 'R', 'K', 'J', 'S'];
@@ -366,61 +334,105 @@
             const [selectedActivity, setSelectedActivity] = useState(null);
             const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+            // Define Menu Items for Mapping (Fix for ReferenceError)
+            const menuItems = [
+                { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
+                { id: 'ai-chat', label: 'AI Chat', icon: 'sparkles' },
+                { id: 'dppk', label: 'Data DPPK', icon: 'list' },
+                { id: 'monthly', label: 'Rincian Bulanan', icon: 'book-open' },
+                { id: 'rab', label: 'Rincian RAB', icon: 'shopping-bag' },
+                { id: 'calendar', label: 'Kalender Kerja', icon: 'calendar' },
+                { id: 'setting', label: 'Pengaturan', icon: 'settings' },
+            ];
+
             useEffect(() => {
-                const loadData = async () => {
+                const fetchData = async () => {
                     setLoading(true);
                     try {
-                        const fetchCSV = (url) => new Promise((resolve, reject) => Papa.parse(url, { download: true, header: true, skipEmptyLines: true, complete: res => resolve(res.data), error: reject }));
-                        const [dppkRes, rabRes] = await Promise.all([fetchCSV(config.dppk), fetchCSV(config.rab)]);
-                        
-                        setDataDPPK(dppkRes.map(item => ({
-                            no: parseInt(item['no']) || 0,
-                            kategori: item['kategori'] || '',
-                            kode_akup: item['kode akup'] || '-',
-                            program: item['program'] || '',
-                            kegiatan: item['kegiatan'] || '',
-                            indikator: item['indikator capaian'] || '-',
-                            sasaran: item['sasaran'] || '-',
-                            waktu: item['waktu'] || '', 
-                            anggaran: parseInt(String(item['anggaran']).replace(/[^0-9]/g, '')) || 0,
-                            pic: item['pic'] || '',
-                            unit_kerja: item['unit kerja'] || '',
-                            wilayah_kerja: item['Wilayah Kerja'] || item['wilayah kerja'] || '',
-                            link_berkas: item['Link Berkas'] || item['link berkas'] || ''
-                        })));
+                        if (config.dppk && config.rab) {
+                            const fetchCSV = (url) => new Promise((resolve, reject) => Papa.parse(url, { download: true, header: true, skipEmptyLines: true, complete: res => resolve(res.data), error: reject }));
+                            const [dppkRes, rabRes] = await Promise.all([fetchCSV(config.dppk), fetchCSV(config.rab)]);
+                            
+                            setDataDPPK(dppkRes.map(item => ({
+                                no: parseInt(item['no']) || 0,
+                                kategori: item['kategori'] || '',
+                                kode_akup: item['kode akup'] || '-',
+                                program: item['program'] || '',
+                                kegiatan: item['kegiatan'] || '',
+                                indikator: item['indikator capaian'] || '-',
+                                sasaran: item['sasaran'] || '-',
+                                waktu: item['waktu'] || '', 
+                                anggaran: parseInt(String(item['anggaran']).replace(/[^0-9]/g, '')) || 0,
+                                pic: item['pic'] || '',
+                                unit_kerja: item['unit kerja'] || '',
+                                wilayah_kerja: item['Wilayah Kerja'] || item['wilayah kerja'] || '',
+                                link_berkas: item['Link Berkas'] || item['link berkas'] || ''
+                            })));
 
-                        setDataRAB(rabRes.map(item => ({
-                            no: parseInt(item['no']) || 0,
-                            program: item['program'] || '',
-                            kegiatan: item['kegiatan'] || '',
-                            rincian: item['rincian'] || '',
-                            jumlah: parseInt(item['jumlah kuantitas']) || 0,
-                            satuan_jml: item['satuan_jml'] || '',
-                            frek: parseInt(item['frek']) || 0,
-                            satuan_frek: item['satuan_frek'] || '',
-                            volume: parseInt(item['volume']) || 0,
-                            harga: parseInt(String(item['harga satuan']).replace(/[^0-9]/g, '')) || 0,
-                            total: parseInt(String(item['total biaya']).replace(/[^0-9]/g, '')) || 0,
-                            pic: item['pic'] || '',
-                            unit_kerja: item['unit kerja'] || '',
-                            wilayah_kerja: item['Wilayah Kerja'] || item['wilayah kerja'] || ''
-                        })));
+                            setDataRAB(rabRes.map(item => ({
+                                no: parseInt(item['no']) || 0,
+                                program: item['program'] || '',
+                                kegiatan: item['kegiatan'] || '',
+                                rincian: item['rincian'] || '',
+                                jumlah: parseInt(item['jumlah kuantitas']) || 0,
+                                satuan_jml: item['satuan_jml'] || '',
+                                frek: parseInt(item['frek']) || 0,
+                                satuan_frek: item['satuan_frek'] || '',
+                                volume: parseInt(item['volume']) || 0,
+                                harga: parseInt(String(item['harga satuan']).replace(/[^0-9]/g, '')) || 0,
+                                total: parseInt(String(item['total biaya']).replace(/[^0-9]/g, '')) || 0,
+                                pic: item['pic'] || '',
+                                unit_kerja: item['unit kerja'] || '',
+                                wilayah_kerja: item['Wilayah Kerja'] || item['wilayah kerja'] || ''
+                            })));
+                        }
                         setLoading(false);
-                    } catch (e) { 
-                        console.error(e);
-                        setError("Gagal memuat data: " + e.message);
-                        setLoading(false);
-                    }
+                    } catch (err) { setError("Gagal mengambil data."); setLoading(false); }
                 };
-                loadData();
+                fetchData();
             }, [config]);
 
             const uniqueUnits = useMemo(() => Array.from(new Set([...dataDPPK.map(i => i.unit_kerja), ...dataRAB.map(i => i.unit_kerja)])).filter(Boolean).sort(), [dataDPPK, dataRAB]);
             const uniquePICs = useMemo(() => Array.from(new Set([...dataDPPK.map(i => i.pic), ...dataRAB.map(i => i.pic)])).filter(Boolean).sort(), [dataDPPK, dataRAB]);
+            // NEW: Unique Wilayah
             const uniqueWilayahs = useMemo(() => Array.from(new Set([...dataDPPK.map(i => i.wilayah_kerja), ...dataRAB.map(i => i.wilayah_kerja)])).filter(Boolean).sort(), [dataDPPK, dataRAB]);
             const uniqueCategories = useMemo(() => Array.from(new Set(dataDPPK.map(d => d.kategori).filter(Boolean))).sort(), [dataDPPK]);
             const uniqueAkupCodes = useMemo(() => Array.from(new Set(dataDPPK.map(d => d.kode_akup).filter(c => c && c !== '-'))).sort(), [dataDPPK]);
 
+            const filterItem = (item) => {
+                const search = searchTerm.toLowerCase();
+                const matchesSearch = 
+                    (item.program && item.program.toLowerCase().includes(search)) || 
+                    (item.kegiatan && item.kegiatan.toLowerCase().includes(search)) ||
+                    (item.pic && item.pic.toLowerCase().includes(search)) ||
+                    (item.unit_kerja && item.unit_kerja.toLowerCase().includes(search)) ||
+                    (item.wilayah_kerja && item.wilayah_kerja.toLowerCase().includes(search));
+                
+                const matchesMonth = selectedMonth === '' || (() => {
+                    if (!item.waktu) return false;
+                    const dates = item.waktu.split(',').map(s => parseIndonesianDate(s)).filter(d => d);
+                    return dates.some(d => d.getMonth() === parseInt(selectedMonth));
+                })();
+
+                const matchesCategory = selectedCategory ? item.kategori === selectedCategory : true;
+                let matchesAkup = true;
+                if (selectedAkup === 'AKUP') {
+                    matchesAkup = item.kode_akup && item.kode_akup !== '-';
+                } else if (selectedAkup === 'NON-AKUP') {
+                    matchesAkup = !item.kode_akup || item.kode_akup === '-';
+                } else if (selectedAkup) {
+                    matchesAkup = item.kode_akup === selectedAkup;
+                }
+
+                return matchesSearch && 
+                       (selectedUnit ? item.unit_kerja === selectedUnit : true) && 
+                       (selectedPIC ? item.pic === selectedPIC : true) &&
+                       (selectedWilayah ? item.wilayah_kerja === selectedWilayah : true) &&
+                       matchesMonth && matchesCategory && matchesAkup;
+            };
+
+            const filteredDPPK = useMemo(() => dataDPPK.filter(filterItem), [dataDPPK, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedMonth, selectedCategory, selectedAkup]);
+            
             const activityMonthMap = useMemo(() => {
                 const map = new Map();
                 dataDPPK.forEach(item => {
@@ -434,45 +446,6 @@
                 return map;
             }, [dataDPPK]);
 
-            const getFilteredData = (sourceData, ignoreMonth = false) => {
-                return sourceData.filter(item => {
-                    const search = searchTerm.toLowerCase();
-                    const matchesSearch = 
-                        (item.program && item.program.toLowerCase().includes(search)) || 
-                        (item.kegiatan && item.kegiatan.toLowerCase().includes(search)) ||
-                        (item.pic && item.pic.toLowerCase().includes(search)) ||
-                        (item.unit_kerja && item.unit_kerja.toLowerCase().includes(search)) ||
-                        (item.wilayah_kerja && item.wilayah_kerja.toLowerCase().includes(search));
-                    
-                    let matchesMonth = true;
-                    if (!ignoreMonth && selectedMonth !== '') {
-                        if (!item.waktu) matchesMonth = false;
-                        else {
-                            const dates = item.waktu.split(',').map(s => parseIndonesianDate(s)).filter(d => d);
-                            matchesMonth = dates.some(d => d.getMonth() === parseInt(selectedMonth));
-                        }
-                    }
-
-                    const matchesCategory = selectedCategory ? item.kategori === selectedCategory : true;
-                    let matchesAkup = true;
-                    if (selectedAkup === 'AKUP') {
-                        matchesAkup = item.kode_akup && item.kode_akup !== '-';
-                    } else if (selectedAkup === 'NON-AKUP') {
-                        matchesAkup = !item.kode_akup || item.kode_akup === '-';
-                    } else if (selectedAkup) {
-                        matchesAkup = item.kode_akup === selectedAkup;
-                    }
-
-                    return matchesSearch && 
-                           (selectedUnit ? item.unit_kerja === selectedUnit : true) && 
-                           (selectedPIC ? item.pic === selectedPIC : true) &&
-                           (selectedWilayah ? item.wilayah_kerja === selectedWilayah : true) &&
-                           matchesMonth && matchesCategory && matchesAkup;
-                });
-            };
-
-            const filteredDPPK = useMemo(() => getFilteredData(dataDPPK), [dataDPPK, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedMonth, selectedCategory, selectedAkup]);
-            
             const filteredRAB = useMemo(() => dataRAB.filter(item => {
                  const search = searchTerm.toLowerCase();
                  const matchesSearch = (item.program?.toLowerCase().includes(search)) || (item.kegiatan?.toLowerCase().includes(search)) || (item.rincian?.toLowerCase().includes(search)) || (item.pic?.toLowerCase().includes(search));
@@ -482,37 +455,37 @@
                      const months = activityMonthMap.get(key);
                      matchesMonth = months ? months.has(parseInt(selectedMonth)) : false; 
                  }
-                 return matchesSearch && (selectedUnit ? item.unit_kerja === selectedUnit : true) && (selectedPIC ? item.pic === selectedPIC : true) && (selectedWilayah ? item.wilayah_kerja === selectedWilayah : true) && matchesMonth;
+
+                 return matchesSearch && 
+                        (selectedUnit ? item.unit_kerja === selectedUnit : true) && 
+                        (selectedPIC ? item.pic === selectedPIC : true) &&
+                        (selectedWilayah ? item.wilayah_kerja === selectedWilayah : true) &&
+                        matchesMonth;
             }), [dataRAB, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedMonth, activityMonthMap]);
 
-            const processedMonthlyData = useMemo(() => {
-                const rabTotals = {};
-                dataRAB.forEach(r => { const key = r.kegiatan ? r.kegiatan.trim().toLowerCase() : ''; if (key) rabTotals[key] = (rabTotals[key] || 0) + (r.total || 0); });
-                let monthlyRows = [];
-                const baseFilteredDPPK = getFilteredData(dataDPPK, true);
-                baseFilteredDPPK.forEach(item => {
-                    if (!item.waktu) return;
-                    const dateStrings = item.waktu.split(',').map(s => s.trim()).filter(s => s);
-                    const executionCount = dateStrings.length;
-                    if (executionCount === 0) return;
-                    const key = item.kegiatan ? item.kegiatan.trim().toLowerCase() : '';
-                    const totalRealized = rabTotals[key] || 0;
-                    const monthlyBudget = totalRealized / executionCount;
-                    dateStrings.forEach(dateStr => {
-                        const parsedDate = parseIndonesianDate(dateStr);
-                        if (parsedDate) {
-                            if (selectedMonth !== '' && parsedDate.getMonth() !== parseInt(selectedMonth)) return;
-                            monthlyRows.push({ ...item, distinctDate: parsedDate, displayDate: dateStr, monthlyBudget: monthlyBudget, monthName: getMonthName(parsedDate.getMonth()) + ' ' + parsedDate.getFullYear() });
-                        }
-                    });
-                });
-                return monthlyRows.sort((a, b) => a.distinctDate - b.distinctDate);
-            }, [dataDPPK, dataRAB, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedMonth, selectedCategory, selectedAkup]);
+            // Filtered Stats Calculation (Added)
+            const currentStats = useMemo(() => {
+                if (activeTab === 'dppk') {
+                    return {
+                        program: new Set(filteredDPPK.map(d => d.program)).size,
+                        kegiatan: filteredDPPK.length,
+                        anggaran: filteredDPPK.reduce((acc, curr) => acc + (curr.anggaran || 0), 0)
+                    };
+                } else if (activeTab === 'rab') {
+                    return {
+                        program: new Set(filteredRAB.map(d => d.program)).size,
+                        kegiatan: new Set(filteredRAB.map(d => d.kegiatan)).size,
+                        anggaran: filteredRAB.reduce((acc, curr) => acc + (curr.total || 0), 0)
+                    };
+                }
+                return null;
+            }, [activeTab, filteredDPPK, filteredRAB]);
 
+
+            // Calendar Events
             const calendarEvents = useMemo(() => {
                 let expandedEvents = [];
-                const dataForCalendar = getFilteredData(dataDPPK, true);
-                dataForCalendar.forEach(item => {
+                filteredDPPK.forEach(item => {
                     if (!item.waktu) return;
                     item.waktu.split(',').map(s => s.trim()).forEach(dateStr => {
                         const parsedDate = parseIndonesianDate(dateStr);
@@ -525,34 +498,125 @@
                     });
                 });
                 return expandedEvents;
-            }, [dataDPPK, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedCategory, selectedAkup]);
+            }, [filteredDPPK]);
 
-            const currentStats = useMemo(() => {
-                if (activeTab === 'dppk') return { program: new Set(filteredDPPK.map(d => d.program)).size, kegiatan: filteredDPPK.length, anggaran: filteredDPPK.reduce((acc, curr) => acc + (curr.anggaran || 0), 0) };
-                if (activeTab === 'rab') return { program: new Set(filteredRAB.map(d => d.program)).size, kegiatan: new Set(filteredRAB.map(d => d.kegiatan)).size, anggaran: filteredRAB.reduce((acc, curr) => acc + (curr.total || 0), 0) };
-                if (activeTab === 'monthly') return { program: new Set(processedMonthlyData.map(d => d.program)).size, kegiatan: processedMonthlyData.length, anggaran: processedMonthlyData.reduce((acc, curr) => acc + (curr.monthlyBudget || 0), 0) };
-                return { program: new Set(filteredDPPK.map(d => d.program)).size, kegiatan: filteredDPPK.length, anggaran: filteredDPPK.reduce((acc, curr) => acc + (curr.anggaran || 0), 0) };
-            }, [activeTab, filteredDPPK, filteredRAB, processedMonthlyData]);
+            // Stats Calculation
+            const stats = useMemo(() => ({
+                totalAnggaran: filteredDPPK.reduce((acc, curr) => acc + (curr.anggaran || 0), 0),
+                totalRealisasi: filteredRAB.reduce((acc, curr) => acc + (curr.total || 0), 0),
+                totalProgram: filteredDPPK.length
+            }), [filteredDPPK, filteredRAB]);
 
             const getRABForActivity = (kegiatanName) => dataRAB.filter(item => item.kegiatan && item.kegiatan.trim().toLowerCase() === kegiatanName.trim().toLowerCase());
 
-            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [activeTab, loading, selectedActivity, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedMonth, selectedCategory, selectedAkup, dataDPPK, dataRAB, currentStats, isSidebarCollapsed]);
+            const processedMonthlyData = useMemo(() => {
+                const rabTotals = {};
+                dataRAB.forEach(r => { const key = r.kegiatan ? r.kegiatan.trim().toLowerCase() : ''; if (key) rabTotals[key] = (rabTotals[key] || 0) + (r.total || 0); });
+                let monthlyRows = [];
+                
+                // Use the filtered DPPK list, but re-apply date logic specifically for splitting
+                // Note: filteredDPPK already has month filter applied if selected.
+                // We just need to expand it.
+                
+                filteredDPPK.forEach(item => {
+                    if (!item.waktu) return;
+                    const dateStrings = item.waktu.split(',').map(s => s.trim()).filter(s => s);
+                    const executionCount = dateStrings.length;
+                    if (executionCount === 0) return;
+                    const key = item.kegiatan ? item.kegiatan.trim().toLowerCase() : '';
+                    const totalRealized = rabTotals[key] || 0;
+                    const monthlyBudget = totalRealized / executionCount;
+
+                    dateStrings.forEach(dateStr => {
+                        const parsedDate = parseIndonesianDate(dateStr);
+                        if (parsedDate) {
+                            // If a specific month is selected, only show that month's row
+                            if (selectedMonth !== '' && parsedDate.getMonth() !== parseInt(selectedMonth)) {
+                                return;
+                            }
+                            
+                            monthlyRows.push({
+                                ...item,
+                                distinctDate: parsedDate,
+                                displayDate: dateStr,
+                                monthlyBudget: monthlyBudget,
+                                monthName: getMonthName(parsedDate.getMonth()) + ' ' + parsedDate.getFullYear()
+                            });
+                        }
+                    });
+                });
+                return monthlyRows.sort((a, b) => a.distinctDate - b.distinctDate);
+            }, [filteredDPPK, dataRAB, selectedMonth]);
+
+
+            // Icon handling: Added more dependencies to ensure icons refresh on filter changes
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [activeTab, loading, selectedActivity, searchTerm, selectedUnit, selectedPIC, selectedWilayah, dataDPPK, dataRAB, currentStats, isSidebarCollapsed]);
 
             return (
                 <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 font-sans">
+                    {/* SIDEBAR - Updated Color to #3073F1 */}
                     <aside className={`hidden md:flex flex-col bg-[#3073F1] border-r border-blue-600 h-screen sticky top-0 z-50 transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-72'}`}>
-                        <div className="p-4 border-b border-blue-500 flex items-center justify-between"><div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center w-full' : ''}`}><div className="bg-white p-2 rounded-xl text-[#3073F1] shadow-lg shrink-0"><i data-lucide="layers" className="w-6 h-6"></i></div>{!isSidebarCollapsed && <div><h1 className="font-bold text-white leading-tight">Perencanaan<br/>Biktren</h1></div>}</div>{!isSidebarCollapsed && (<button onClick={() => setIsSidebarCollapsed(true)} className="text-blue-200 hover:text-white p-1 rounded hover:bg-blue-500/50 transition"><i data-lucide="chevron-left" className="w-5 h-5"></i></button>)}</div>{isSidebarCollapsed && (<button onClick={() => setIsSidebarCollapsed(false)} className="w-full py-3 text-blue-200 hover:text-white flex justify-center hover:bg-blue-500/50 transition"><i data-lucide="chevron-right" className="w-5 h-5"></i></button>)}
-                        <nav className="flex-1 p-4 space-y-2 overflow-y-auto hide-scrollbar flex flex-col">
-                            <button onClick={() => setActiveTab('dashboard')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'dashboard' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Dashboard' : ''}><i data-lucide="layout-dashboard" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Dashboard</span>}</button>
-                            <button onClick={() => setActiveTab('ai-chat')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'ai-chat' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'AI Assistant' : ''}><i data-lucide="sparkles" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>AI Chat</span>}</button>
-                            {!isSidebarCollapsed && <div className="px-4 py-2 text-xs font-semibold text-blue-200 uppercase tracking-wider mt-4">Data Master</div>}{isSidebarCollapsed && <div className="my-2 border-t border-blue-500/30"></div>}
-                            <button onClick={() => setActiveTab('dppk')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'dppk' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Data DPPK' : ''}><i data-lucide="list" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Data DPPK</span>}</button>
-                            <button onClick={() => setActiveTab('monthly')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'monthly' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Rincian Bulanan' : ''}><i data-lucide="book-open" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Rincian Bulanan</span>}</button>
-                            <button onClick={() => setActiveTab('rab')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'rab' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Rincian RAB' : ''}><i data-lucide="shopping-bag" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Rincian RAB</span>}</button>
-                            <button onClick={() => setActiveTab('calendar')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'calendar' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Kalender Kerja' : ''}><i data-lucide="calendar" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Kalender Kerja</span>}</button>
-                            <div className={`mt-auto ${!isSidebarCollapsed ? 'pt-4 border-t border-blue-500' : 'pt-2 border-t border-blue-500/30'}`}><button onClick={() => setActiveTab('setting')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'setting' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Pengaturan' : ''}><i data-lucide="settings" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Pengaturan</span>}</button></div>
-                            {!isSidebarCollapsed && (<div className="mt-6 w-full"><div className="rounded-xl p-6 relative overflow-hidden group glass-effect"><div className="relative z-10"><p className="text-sm text-white font-medium italic leading-relaxed text-justify"><span className="text-4xl font-serif mr-1 leading-none align-text-top text-white" style={{color: '#E78B09'}}>"</span><br/>Dalam merencanakan dan melaksanakan program dan kegiatan pesantren: lakukan se<span className="font-bold text-white">IDEAL</span> mungkin, bila tidak bisa maka lakukan secara <span className="font-bold text-white">REALISTIS</span>, dan jika masih belum bisa lakukan secara <span className="font-bold text-white">RASIONAL</span>".</p><div className="mt-4 flex items-start gap-3 pt-3 border-t border-white/30"><div className="h-10 w-0.5 rounded-full bg-white"></div><div><p className="text-[10px] font-bold text-white uppercase tracking-wider">Kepala Pondok</p><p className="text-[10px] font-semibold text-white/80">Pesantren Nurul Jadid</p></div></div></div></div></div>)}
+                        <div className="p-4 border-b border-blue-500 flex items-center justify-between">
+                             <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center w-full' : ''}`}>
+                                <div className="bg-white p-2 rounded-xl text-[#3073F1] shadow-lg shrink-0">
+                                    <i data-lucide="layers" className="w-6 h-6"></i>
+                                </div>
+                                {!isSidebarCollapsed && <div><h1 className="font-bold text-white leading-tight">Perencanaan<br/>Biktren</h1></div>}
+                            </div>
+                            {!isSidebarCollapsed && (
+                                <button onClick={() => setIsSidebarCollapsed(true)} className="text-blue-200 hover:text-white p-1 rounded hover:bg-blue-500/50 transition">
+                                    <i data-lucide="chevron-left" className="w-5 h-5"></i>
+                                </button>
+                            )}
+                        </div>
+                        
+                        {/* Collapsed State Open Button */}
+                        {isSidebarCollapsed && (
+                             <button onClick={() => setIsSidebarCollapsed(false)} className="w-full py-3 text-blue-200 hover:text-white flex justify-center hover:bg-blue-500/50 transition">
+                                <i data-lucide="chevron-right" className="w-5 h-5"></i>
+                            </button>
+                        )}
+
+                        <nav className="flex-1 p-4 space-y-2 overflow-y-auto hide-scrollbar">
+                            {/* Dashboard Item */}
+                            <button onClick={() => setActiveTab('dashboard')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'dashboard' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Dashboard' : ''}>
+                                <i data-lucide="layout-dashboard" className="w-5 h-5 shrink-0"></i> 
+                                {!isSidebarCollapsed && <span>Dashboard</span>}
+                            </button>
+
+                            <button onClick={() => setActiveTab('ai-chat')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'ai-chat' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'AI Chat' : ''}>
+                                <i data-lucide="sparkles" className="w-5 h-5 shrink-0"></i> 
+                                {!isSidebarCollapsed && <span>AI Chat</span>}
+                            </button>
+                            
+                            {!isSidebarCollapsed && <div className="px-4 py-2 text-xs font-semibold text-blue-200 uppercase tracking-wider mt-4">Data Master</div>}
+                            {isSidebarCollapsed && <div className="my-2 border-t border-blue-500/30"></div>}
+
+                            <button onClick={() => setActiveTab('dppk')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'dppk' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Data DPPK' : ''}>
+                                <i data-lucide="list" className="w-5 h-5 shrink-0"></i> 
+                                {!isSidebarCollapsed && <span>Data DPPK</span>}
+                            </button>
+                            <button onClick={() => setActiveTab('monthly')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'monthly' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Rincian Bulanan' : ''}>
+                                <i data-lucide="book-open" className="w-5 h-5 shrink-0"></i> 
+                                {!isSidebarCollapsed && <span>Rincian Bulanan</span>}
+                            </button>
+                            <button onClick={() => setActiveTab('rab')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'rab' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Rincian RAB' : ''}>
+                                <i data-lucide="shopping-bag" className="w-5 h-5 shrink-0"></i> 
+                                {!isSidebarCollapsed && <span>Rincian RAB</span>}
+                            </button>
+                            <button onClick={() => setActiveTab('calendar')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'calendar' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Kalender Kerja' : ''}>
+                                <i data-lucide="calendar" className="w-5 h-5 shrink-0"></i> 
+                                {!isSidebarCollapsed && <span>Kalender Kerja</span>}
+                            </button>
+                            
+                            <div className={`mt-auto ${!isSidebarCollapsed ? 'pt-4 border-t border-blue-500' : 'pt-2 border-t border-blue-500/30'}`}>
+                                <button onClick={() => setActiveTab('setting')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'setting' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Pengaturan' : ''}>
+                                    <i data-lucide="settings" className="w-5 h-5 shrink-0"></i> 
+                                    {!isSidebarCollapsed && <span>Pengaturan</span>}
+                                </button>
+                            </div>
                         </nav>
+
                         {!isSidebarCollapsed && <div className="p-4 border-t border-blue-500 bg-[#3073F1]">
                             {user ? (
                                 <div className="text-center">
@@ -562,31 +626,79 @@
                             ) : (
                                 <div className="text-xs text-blue-200 text-center flex items-center justify-center gap-1"><i data-lucide="user" className="w-3 h-3"></i> Mode Tamu</div>
                             )}
-                            <div className="text-[10px] text-blue-300 text-center mt-2">© 2026 Perencanaan Biktren</div>
+                            <div className="text-[10px] text-blue-300 text-center mt-2">© {currentYear} Perencanaan Biktren</div>
                         </div>}
                     </aside>
 
-                    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 px-2 flex justify-around items-end shadow-[0_-4px_10px_rgba(0,0,0,0.05)] h-20 pb-2">
-                        {[{id:'dashboard',icon:'layout-dashboard',l:'Dashboard'},{id:'ai-chat',icon:'sparkles',l:'AI Chat'},{id:'dppk',icon:'list',l:'DPPK'},{id:'monthly',icon:'book-open',l:'Bulanan'},{id:'rab',icon:'shopping-bag',l:'RAB'},{id:'calendar',icon:'calendar',l:'Kalender'}].map((i) => (
-                            <button key={i.id} onClick={() => setActiveTab(i.id)} className={`mobile-nav-item flex-1 ${activeTab === i.id ? 'active' : ''}`}><div className="icon-container"><i data-lucide={i.icon} className="w-6 h-6"></i></div><span className={`text-[10px] font-medium mt-1 ${activeTab === i.id ? 'opacity-0 h-0' : 'opacity-100'}`}>{i.l}</span></button>
-                        ))}
-                    </nav>
+                    {/* MOBILE BOTTOM NAVIGATION (MODERN FLOATING DOCK) */}
+                    <div className="md:hidden mobile-nav-wrapper">
+                        <nav className="mobile-nav-container">
+                            {menuItems.map((item) => (
+                                <button 
+                                    key={item.id}
+                                    onClick={() => setActiveTab(item.id)} 
+                                    className={`mobile-nav-item ${activeTab === item.id ? 'active' : ''}`}
+                                >
+                                    <div className="icon">
+                                        <i data-lucide={item.icon} className="w-full h-full"></i>
+                                    </div>
+                                    <span>{item.label}</span>
+                                </button>
+                            ))}
+                        </nav>
+                    </div>
 
-                    <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative pb-24 md:pb-8">
-                        {loading ? (<div className="flex flex-col items-center justify-center h-full"><div className="loading-spinner mb-4"></div><p className="text-slate-500 animate-pulse">Menyiapkan Dashboard...</p></div>) : error ? (<div className="flex items-center justify-center h-full bg-red-50 rounded-2xl p-8 text-center"><h2 className="text-xl font-bold text-slate-800">Terjadi Kesalahan</h2><p className="text-slate-600 mb-4">{error}</p><button onClick={() => setActiveTab('setting')} className="bg-indigo-600 text-white px-6 py-2 rounded-lg">Periksa Pengaturan</button></div>) : (
+                    {/* MAIN CONTENT */}
+                    <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative pb-32 md:pb-8 main-content">
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center h-full"><div className="loading-spinner mb-4"></div><p className="text-slate-500 animate-pulse">Menyiapkan Dashboard...</p></div>
+                        ) : error ? (
+                            <div className="flex items-center justify-center h-full bg-red-50 rounded-2xl p-8 text-center"><h2 className="text-xl font-bold text-slate-800">Terjadi Kesalahan</h2><p className="text-slate-600 mb-4">{error}</p><button onClick={() => setActiveTab('setting')} className="bg-indigo-600 text-white px-6 py-2 rounded-lg">Periksa Pengaturan</button></div>
+                        ) : (
                             <>
                                 {activeTab !== 'setting' && activeTab !== 'dashboard' && activeTab !== 'ai-chat' && (
                                     <div className="flex flex-col xl:flex-row gap-4 mb-6">
-                                        <div className="relative flex-1"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="search" className="w-4 h-4"></i></div><input type="text" placeholder="Cari data..." className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-                                        <div className="relative min-w-[200px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="building" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm" value={selectedUnit} onChange={(e) => setSelectedUnit(e.target.value)}><option value="">Semua Unit Kerja</option>{uniqueUnits.map((unit, idx) => <option key={idx} value={unit}>{unit}</option>)}</select></div>
-                                        <div className="relative min-w-[200px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="user" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm" value={selectedPIC} onChange={(e) => setSelectedPIC(e.target.value)}><option value="">Semua PIC</option>{uniquePICs.map((pic, idx) => <option key={idx} value={pic}>{pic}</option>)}</select></div>
-                                        <div className="relative min-w-[200px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="map" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm" value={selectedWilayah} onChange={(e) => setSelectedWilayah(e.target.value)}><option value="">Semua Wilayah</option>{uniqueWilayahs.map((wil, idx) => <option key={idx} value={wil}>{wil}</option>)}</select></div>
-                                        {activeTab !== 'calendar' && <div className="relative min-w-[200px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="calendar" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}><option value="">Semua Bulan</option>{monthOptions.map((month, idx) => <option key={idx} value={idx}>{month}</option>)}</select></div>}
+                                        <div className="relative flex-1">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="search" className="w-4 h-4"></i></div>
+                                            <input type="text" placeholder="Cari data..." className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm shadow-sm outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                        </div>
+                                        <div className="relative min-w-[180px]">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="building" className="w-4 h-4"></i></div>
+                                            <select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm outline-none" value={selectedUnit} onChange={(e) => setSelectedUnit(e.target.value)}>
+                                                <option value="">Semua Unit Kerja</option>
+                                                {uniqueUnits.map((unit, idx) => <option key={idx} value={unit}>{unit}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="relative min-w-[180px]">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="user" className="w-4 h-4"></i></div>
+                                            <select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm outline-none" value={selectedPIC} onChange={(e) => setSelectedPIC(e.target.value)}>
+                                                <option value="">Semua PIC</option>
+                                                {uniquePICs.map((pic, idx) => <option key={idx} value={pic}>{pic}</option>)}
+                                            </select>
+                                        </div>
+                                        {/* NEW: Wilayah Kerja Filter */}
+                                        <div className="relative min-w-[180px]">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="map" className="w-4 h-4"></i></div>
+                                            <select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm outline-none" value={selectedWilayah} onChange={(e) => setSelectedWilayah(e.target.value)}>
+                                                <option value="">Semua Wilayah</option>
+                                                {uniqueWilayahs.map((wil, idx) => <option key={idx} value={wil}>{wil}</option>)}
+                                            </select>
+                                        </div>
+                                        {/* NEW: Month Filter */}
+                                        {activeTab !== 'calendar' && (
+                                            <div className="relative min-w-[180px]">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="calendar" className="w-4 h-4"></i></div>
+                                                <select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm outline-none" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+                                                    <option value="">Semua Bulan</option>
+                                                    {monthOptions.map((month, idx) => <option key={idx} value={idx}>{month}</option>)}
+                                                </select>
+                                            </div>
+                                        )}
 
                                         {/* Category Filter */}
                                         <div className="relative min-w-[180px]">
                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="tag" className="w-4 h-4"></i></div>
-                                            <select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm outline-none cursor-pointer" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+                                            <select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm outline-none cursor-pointer" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
                                                 <option value="">Semua Kategori</option>
                                                 {uniqueCategories.map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
                                             </select>
@@ -608,9 +720,16 @@
                                     </div>
                                 )}
 
-                                {(activeTab === 'dppk' || activeTab === 'rab' || activeTab === 'monthly' || activeTab === 'dashboard') && currentStats && <MiniStats programCount={currentStats.program} activityCount={currentStats.kegiatan} totalBudget={currentStats.anggaran} type={activeTab === 'rab' ? 'RAB' : (activeTab === 'monthly' ? 'Bulanan' : 'DPPK')} />}
+                                {(activeTab === 'dppk' || activeTab === 'rab' || activeTab === 'monthly' || activeTab === 'dashboard') && currentStats && (
+                                    <MiniStats 
+                                        programCount={currentStats.program} 
+                                        activityCount={currentStats.kegiatan} 
+                                        totalBudget={currentStats.anggaran}
+                                        type={activeTab === 'rab' ? 'RAB' : (activeTab === 'monthly' ? 'Bulanan' : 'DPPK')}
+                                    />
+                                )}
 
-                                {activeTab === 'dashboard' && <DashboardView dataDPPK={filteredDPPK} />}
+                                {activeTab === 'dashboard' && <DashboardView stats={stats} dataDPPK={filteredDPPK} dataRAB={filteredRAB} />}
                                 {activeTab === 'ai-chat' && (
                                     user ? <AIChatView dataDPPK={dataDPPK} dataRAB={dataRAB} geminiToken={geminiToken} /> : <LoginView onLoginSuccess={(u, token) => { setUser(u); setGeminiToken(token); }} />
                                 )}
@@ -623,7 +742,8 @@
                             </>
                         )}
                     </main>
-                    {selectedActivity && <ActivityDetailModal activity={selectedActivity} rabItems={getRABForActivity(selectedActivity.kegiatan)} onClose={() => setSelectedActivity(null)} />}
+
+                    {selectedActivity && <ModalPortal><ActivityDetailModal activity={selectedActivity} rabItems={getRABForActivity(selectedActivity.kegiatan)} onClose={() => setSelectedActivity(null)} /></ModalPortal>}
                 </div>
             );
         };
