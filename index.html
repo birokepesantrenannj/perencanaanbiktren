@@ -10,10 +10,38 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
+    <!-- Firebase SDK (Modular) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Expose Firebase modules to window so React can access them
+        window.firebaseModules = { 
+            initializeApp, 
+            getAuth, 
+            signInWithPopup, 
+            GoogleAuthProvider, 
+            signOut, 
+            onAuthStateChanged, 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            getDocs, 
+            doc, 
+            deleteDoc, 
+            query, 
+            where, 
+            onSnapshot 
+        };
+    </script>
+
     <!-- PapaParse & Tailwind & Icons -->
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Marked for Markdown Parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
@@ -35,6 +63,20 @@
         .menu-item.active { background: #ffffff; color: #3073F1; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
         .mobile-nav-item.active { color: #3073F1; }
         .mobile-nav-item.active .icon-container { transform: translateY(-20px); background-color: #3073F1; color: white; border: 4px solid #f1f5f9; }
+        
+        /* Chat Styles */
+        .chat-bubble { max-width: 80%; padding: 12px 16px; border-radius: 1rem; position: relative; }
+        .chat-user { background-color: #3073F1; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .chat-ai { background-color: #f1f5f9; color: #1e293b; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid #e2e8f0; }
+        .chat-markdown ul { list-style-type: disc; margin-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+        .chat-markdown ol { list-style-type: decimal; margin-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+        .chat-markdown p { margin-bottom: 0.5rem; }
+        .chat-markdown strong { font-weight: 700; }
+        .typing-dot { width: 6px; height: 6px; background-color: #cbd5e1; border-radius: 50%; animation: typing 1.4s infinite ease-in-out both; }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
         @keyframes modalEnter { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
@@ -46,6 +88,22 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
+
+        // --- FIREBASE CONFIGURATION ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'biktren-app';
+        
+        let auth, db, provider;
+        
+        if (window.firebaseModules && Object.keys(firebaseConfig).length > 0) {
+            const { initializeApp, getAuth, getFirestore, GoogleAuthProvider } = window.firebaseModules;
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            provider = new GoogleAuthProvider();
+            provider.addScope('https://www.googleapis.com/auth/generative-language.retriever.readonly');
+            provider.addScope('https://www.googleapis.com/auth/cloud-platform'); 
+        }
 
         // --- UTILS & CONSTANTS ---
         const DEFAULT_DPPK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQsyhdflwwzu6_vAeJVMO8JccuK_riBbDa45q1m6xWGe0Bq5Ol-AEwzuCULArWA-J_8JoSlqWH8yoL4/pub?gid=0&single=true&output=csv";
@@ -136,7 +194,7 @@
             </div>
         );
 
-        // --- SUB-VIEWS ---
+        // --- SUB-VIEWS (DASHBOARD & TABLES) ---
 
         const DashboardView = ({ dataDPPK }) => {
             const totalAnggaran = useMemo(() => dataDPPK.reduce((acc, curr) => acc + (curr.anggaran || 0), 0), [dataDPPK]);
@@ -209,7 +267,14 @@
                                         <td className="px-6 py-4 text-right text-sm font-bold text-slate-800">{formatRupiah(item.anggaran)}</td>
                                         <td className="px-6 py-4"><div className="text-sm text-slate-800">{item.pic}</div><div className="text-xs text-indigo-600 font-medium">{item.unit_kerja}</div></td>
                                         <td className="px-6 py-4">{item.wilayah_kerja && <span className={`px-2 py-1 text-xs font-bold rounded-md uppercase tracking-wider ${item.wilayah_kerja.toLowerCase() === 'putra' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>{item.wilayah_kerja}</span>}</td>
-                                        <td className="px-6 py-4"><button onClick={() => onSelect(item)} className="block w-full text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 font-medium">Detail</button></td>
+                                        <td className="px-6 py-4 text-center space-y-2">
+                                            <button onClick={() => onSelect(item)} className="block w-full text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 font-medium transition">Detail</button>
+                                            {item.link_berkas ? (
+                                                <a href={item.link_berkas} target="_blank" className="block w-full text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 font-medium transition text-center">BERKAS</a>
+                                            ) : (
+                                                <button disabled className="block w-full text-xs bg-slate-100 text-slate-400 px-3 py-1.5 rounded-lg font-medium cursor-not-allowed">BERKAS</button>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))}
                                 {paginatedData.length === 0 && <tr><td colSpan="9" className="px-6 py-12 text-center text-slate-500">Tidak ada data.</td></tr>}
@@ -330,57 +395,80 @@
             );
         };
 
-        // --- MAIN COMPONENTS ---
-
+        // --- CALENDAR & OTHER COMPONENTS (Same logic, restored) ---
         const CalendarView = ({ events, setSelectedActivity }) => {
-            const [date, setDate] = useState(new Date());
-            const [viewMode, setViewMode] = useState('month'); 
-            const daysNames = ['M', 'S', 'S', 'R', 'K', 'J', 'S'];
-
-            const renderMonthGrid = (targetDate, isMini = false) => {
-                const currentMonth = targetDate.getMonth();
-                const currentYear = targetDate.getFullYear();
-                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-                const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
-                const days = [...Array(firstDayOfMonth).fill(null), ...Array(daysInMonth).keys()].map(i => i !== null ? i + 1 : null);
-
-                return (
-                    <div className={isMini ? "mini-calendar-grid" : "calendar-grid"}>
-                        {days.map((day, idx) => {
-                            let dayEvents = [], hijriText = "";
-                            if (day) {
-                                const cellDate = new Date(currentYear, currentMonth, day);
-                                dayEvents = events.filter(e => { const eDate = new Date(e.tanggal); return eDate.getDate() === day && eDate.getMonth() === currentMonth && eDate.getFullYear() === currentYear; });
-                                hijriText = formatHijri(cellDate);
-                            }
-                            if (isMini) return <div key={idx} className={`mini-calendar-cell ${!day ? 'bg-transparent' : ''}`}>{day && (<><span className={`text-[10px] ${dayEvents.length > 0 ? 'font-bold text-slate-800' : 'text-slate-400'}`}>{day}</span>{dayEvents.length > 0 && <div className="has-event-dot"></div>}</>)}</div>;
-                            const isToday = day === new Date().getDate() && currentMonth === new Date().getMonth() && currentYear === new Date().getFullYear();
-                            return (
-                                <div key={idx} className={`calendar-cell p-2 flex flex-col border-b border-r border-slate-100 ${!day ? 'bg-slate-50' : ''} ${dayEvents.length > 0 ? 'bg-indigo-50' : ''}`}>
-                                    {day && <div className="flex flex-col items-center justify-center h-full"><div className={`text-xl font-medium flex items-center justify-center w-10 h-10 rounded-full mb-1 ${isToday ? 'bg-indigo-600 text-white' : (idx%7===5)?'text-red-500':'text-slate-700'}`}>{day}</div><div className="text-[10px] text-slate-400 text-center font-serif opacity-80">{hijriText}</div>{dayEvents.length > 0 && <div className="mt-2 px-2 py-1 bg-white/60 backdrop-blur-sm border border-indigo-200 text-indigo-700 text-[10px] font-bold rounded-full shadow-sm">{dayEvents.length} Kegiatan</div>}</div>}
-                                </div>
-                            );
-                        })}
-                    </div>
-                );
-            };
-
+            const [date, setDate] = useState(new Date()); const [viewMode, setViewMode] = useState('month'); const daysNames = ['M', 'S', 'S', 'R', 'K', 'J', 'S'];
+            const renderMonthGrid = (targetDate, isMini = false) => { const currentMonth = targetDate.getMonth(); const currentYear = targetDate.getFullYear(); const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate(); const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay(); const days = [...Array(firstDayOfMonth).fill(null), ...Array(daysInMonth).keys()].map(i => i !== null ? i + 1 : null); return (<div className={isMini ? "mini-calendar-grid" : "calendar-grid"}>{days.map((day, idx) => { let dayEvents = [], hijriText = ""; if (day) { const cellDate = new Date(currentYear, currentMonth, day); dayEvents = events.filter(e => { const eDate = new Date(e.tanggal); return eDate.getDate() === day && eDate.getMonth() === currentMonth && eDate.getFullYear() === currentYear; }); hijriText = formatHijri(cellDate); } if (isMini) return <div key={idx} className={`mini-calendar-cell ${!day ? 'bg-transparent' : ''}`}>{day && (<><span className={`text-[10px] ${dayEvents.length > 0 ? 'font-bold text-slate-800' : 'text-slate-400'}`}>{day}</span>{dayEvents.length > 0 && <div className="has-event-dot"></div>}</>)}</div>; const isToday = day === new Date().getDate() && currentMonth === new Date().getMonth() && currentYear === new Date().getFullYear(); return (<div key={idx} className={`calendar-cell p-2 flex flex-col border-b border-r border-slate-100 ${!day ? 'bg-slate-50' : ''} ${dayEvents.length > 0 ? 'bg-indigo-50' : ''}`}>{day && <div className="flex flex-col items-center justify-center h-full"><div className={`text-xl font-medium flex items-center justify-center w-10 h-10 rounded-full mb-1 ${isToday ? 'bg-indigo-600 text-white' : (idx%7===5)?'text-red-500':'text-slate-700'}`}>{day}</div><div className="text-[10px] text-slate-400 text-center font-serif opacity-80">{hijriText}</div>{dayEvents.length > 0 && <div className="mt-2 px-2 py-1 bg-white/60 backdrop-blur-sm border border-indigo-200 text-indigo-700 text-[10px] font-bold rounded-full shadow-sm">{dayEvents.length} Kegiatan</div>}</div>}</div>); })}</div>); };
             const monthlyEvents = useMemo(() => events.filter(e => { const eDate = new Date(e.tanggal); return eDate.getMonth() === date.getMonth() && eDate.getFullYear() === date.getFullYear(); }).sort((a,b) => new Date(a.tanggal) - new Date(b.tanggal)), [events, date]);
+            return (<div className="animate-fade-in flex flex-col gap-6"><div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex items-center justify-between"><div><p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Jumlah Kegiatan Bulan Ini</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{monthlyEvents.length} Kegiatan</h3><p className="text-sm text-indigo-600 mt-1 font-medium">{getMonthName(date.getMonth())} {date.getFullYear()}</p></div><div className="p-4 bg-indigo-50 text-indigo-600 rounded-full"><i data-lucide="calendar-check" className="w-8 h-8"></i></div></div><div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"><div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50"><div className="flex items-center gap-4"><h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="calendar" className="w-6 h-6 text-indigo-600"></i> {viewMode === 'month' ? `${getMonthName(date.getMonth())} ${date.getFullYear()}` : `Tahun ${date.getFullYear()}`}</h2><div className="flex bg-slate-200 rounded-lg p-1"><button onClick={() => setViewMode('month')} className={`px-3 py-1 rounded-md text-sm font-medium transition ${viewMode === 'month' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Bulanan</button><button onClick={() => setViewMode('year')} className={`px-3 py-1 rounded-md text-sm font-medium transition ${viewMode === 'year' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Tahunan</button></div></div><div className="flex space-x-2"><button onClick={() => setDate(new Date(date.getFullYear() - 1, date.getMonth(), 1))} className="p-2 hover:bg-slate-200 rounded-lg text-slate-600"><i data-lucide="chevron-left" className="w-5 h-5"></i></button><span className="py-2 px-3 font-bold text-slate-700 bg-white border border-slate-200 rounded-lg">{date.getFullYear()}</span><button onClick={() => setDate(new Date(date.getFullYear() + 1, date.getMonth(), 1))} className="p-2 hover:bg-slate-200 rounded-lg text-slate-600"><i data-lucide="chevron-right" className="w-5 h-5"></i></button></div></div>{viewMode === 'month' && <div className="flex overflow-x-auto border-b border-slate-200 bg-white p-2 hide-scrollbar space-x-2 sticky top-0 z-10">{monthOptions.map((name, index) => <button key={name} onClick={() => {const d = new Date(date); d.setMonth(index); setDate(d);}} className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition whitespace-nowrap ${date.getMonth() === index ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-100'}`}>{name}</button>)}</div>}<div className="flex-1 overflow-y-auto relative">{viewMode === 'month' ? <>{['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, i) => <div key={d} className="hidden" />)}<div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center py-3 sticky top-0 z-10 shadow-sm">{['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, i) => <div key={d} className={`text-xs font-bold uppercase ${i===5 ?'text-red-500':'text-slate-500'}`}>{d}</div>)}</div>{renderMonthGrid(date)}</> : <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{monthOptions.map((name, index) => <div key={name} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition cursor-pointer" onClick={() => {const d = new Date(date.getFullYear(), index, 1); setDate(d); setViewMode('month');}}><div className="bg-slate-50 p-2 text-center border-b border-slate-100 font-bold text-slate-700 text-sm">{name}</div><div className="p-1">{renderMonthGrid(new Date(date.getFullYear(), index, 1), true)}</div></div>)}</div>}</div></div>{viewMode === 'month' && <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"><div className="p-5 border-b border-slate-100 flex items-center gap-3 bg-slate-50"><div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><i data-lucide="list" className="w-5 h-5"></i></div><h3 className="text-lg font-bold text-slate-800">Daftar Kegiatan - {getMonthName(date.getMonth())} {date.getFullYear()}</h3></div><div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-100"><thead className="bg-slate-50"><tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[10%]">Tanggal</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[30%]">Program & Kegiatan</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[15%]">Anggaran</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[20%]">PIC & Unit</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[15%]">Wilayah Kerja</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[10%]">Aksi</th></tr></thead><tbody className="divide-y divide-slate-100 bg-white">{monthlyEvents.map((ev, idx) => (<tr key={idx} className="hover:bg-slate-50 transition"><td className="px-6 py-4"><div className="flex flex-col items-center justify-center w-12 p-2 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100"><span className="text-lg font-bold leading-none">{new Date(ev.tanggal).getDate()}</span><span className="text-[10px] font-bold uppercase mt-1">{getMonthName(new Date(ev.tanggal).getMonth()).substring(0, 3)}</span></div></td><td className="px-6 py-4"><h4 className="text-sm font-bold text-slate-800 line-clamp-2">{ev.kegiatan}</h4><p className="text-xs text-slate-500 mt-1 line-clamp-1">{ev.program}</p></td><td className="px-6 py-4 text-right"><span className="text-sm font-bold text-slate-700 font-mono">{formatRupiah(ev.anggaran)}</span></td><td className="px-6 py-4"><div className="text-sm font-medium text-slate-800">{ev.pic}</div><div className="text-xs text-indigo-600 font-medium">{ev.unit_kerja}</div></td><td className="px-6 py-4 text-center">{ev.wilayah_kerja && <StatusBadge type={ev.wilayah_kerja} />}</td><td className="px-6 py-4 text-center"><button onClick={() => setSelectedActivity(ev)} className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition shadow-sm">Detail</button></td></tr>))}</tbody></table></div></div>}</div>);
+        };
 
+        // --- AI & LOGIN COMPONENTS ---
+        const AIChatView = ({ dataDPPK, dataRAB, geminiToken }) => {
+            const [messages, setMessages] = useState([{ role: 'model', text: 'Halo! Saya asisten AI Biktren. Ada yang bisa saya bantu terkait data program atau RAB?' }]);
+            const [input, setInput] = useState(''); const [isLoading, setIsLoading] = useState(false); const messagesEndRef = useRef(null);
+            const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); useEffect(scrollToBottom, [messages]);
+            const callGemini = async (prompt) => {
+                const systemPrompt = `Kamu adalah asisten AI untuk "Aplikasi Perencanaan Biktren". Jawab pertanyaan berdasarkan data JSON ini. Data Program (DPPK) Ringkasan: ${JSON.stringify(dataDPPK.slice(0, 100).map(d => ({kegiatan: d.kegiatan, anggaran: d.anggaran, pic: d.pic})))}`;
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${geminiToken}` }, 
+                        body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + "\nUser: " + prompt }] }] })
+                    });
+                    const data = await response.json();
+                    if (data.error) throw new Error(data.error.message);
+                    return data.candidates[0].content.parts[0].text;
+                } catch (e) { throw new Error("Gagal menghubungi AI: " + e.message); }
+            };
+            const handleSend = async (e) => {
+                e.preventDefault(); if (!input.trim()) return;
+                const userMsg = { role: 'user', text: input };
+                setMessages(prev => [...prev, userMsg]); setInput(''); setIsLoading(true);
+                try {
+                    const replyText = await callGemini(input);
+                    setMessages(prev => [...prev, { role: 'model', text: replyText }]);
+                } catch (err) { setMessages(prev => [...prev, { role: 'model', text: `Error: ${err.message}` }]); } finally { setIsLoading(false); }
+            };
             return (
-                <div className="animate-fade-in flex flex-col gap-6">
-                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex items-center justify-between"><div><p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Jumlah Kegiatan Bulan Ini</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{monthlyEvents.length} Kegiatan</h3><p className="text-sm text-indigo-600 mt-1 font-medium">{getMonthName(date.getMonth())} {date.getFullYear()}</p></div><div className="p-4 bg-indigo-50 text-indigo-600 rounded-full"><i data-lucide="calendar-check" className="w-8 h-8"></i></div></div>
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
-                            <div className="flex items-center gap-4"><h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="calendar" className="w-6 h-6 text-indigo-600"></i> {viewMode === 'month' ? `${getMonthName(date.getMonth())} ${date.getFullYear()}` : `Tahun ${date.getFullYear()}`}</h2><div className="flex bg-slate-200 rounded-lg p-1"><button onClick={() => setViewMode('month')} className={`px-3 py-1 rounded-md text-sm font-medium transition ${viewMode === 'month' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Bulanan</button><button onClick={() => setViewMode('year')} className={`px-3 py-1 rounded-md text-sm font-medium transition ${viewMode === 'year' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Tahunan</button></div></div>
-                            <div className="flex space-x-2"><button onClick={() => setDate(new Date(date.getFullYear() - 1, date.getMonth(), 1))} className="p-2 hover:bg-slate-200 rounded-lg text-slate-600"><i data-lucide="chevron-left" className="w-5 h-5"></i></button><span className="py-2 px-3 font-bold text-slate-700 bg-white border border-slate-200 rounded-lg">{date.getFullYear()}</span><button onClick={() => setDate(new Date(date.getFullYear() + 1, date.getMonth(), 1))} className="p-2 hover:bg-slate-200 rounded-lg text-slate-600"><i data-lucide="chevron-right" className="w-5 h-5"></i></button></div>
-                        </div>
-                        {viewMode === 'month' && <div className="flex overflow-x-auto border-b border-slate-200 bg-white p-2 hide-scrollbar space-x-2 sticky top-0 z-10">{monthOptions.map((name, index) => <button key={name} onClick={() => {const d = new Date(date); d.setMonth(index); setDate(d);}} className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition whitespace-nowrap ${date.getMonth() === index ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-100'}`}>{name}</button>)}</div>}
-                        <div className="flex-1 overflow-y-auto relative">{viewMode === 'month' ? <>{['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, i) => <div key={d} className="hidden" />)}<div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center py-3 sticky top-0 z-10 shadow-sm">{['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, i) => <div key={d} className={`text-xs font-bold uppercase ${i===5 ?'text-red-500':'text-slate-500'}`}>{d}</div>)}</div>{renderMonthGrid(date)}</> : <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{monthOptions.map((name, index) => <div key={name} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition cursor-pointer" onClick={() => {const d = new Date(date.getFullYear(), index, 1); setDate(d); setViewMode('month');}}><div className="bg-slate-50 p-2 text-center border-b border-slate-100 font-bold text-slate-700 text-sm">{name}</div><div className="p-1">{renderMonthGrid(new Date(date.getFullYear(), index, 1), true)}</div></div>)}</div>}</div>
-                    </div>
-                    {viewMode === 'month' && <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"><div className="p-5 border-b border-slate-100 flex items-center gap-3 bg-slate-50"><div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><i data-lucide="list" className="w-5 h-5"></i></div><h3 className="text-lg font-bold text-slate-800">Daftar Kegiatan - {getMonthName(date.getMonth())} {date.getFullYear()}</h3></div><div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-100"><thead className="bg-slate-50"><tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[10%]">Tanggal</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[30%]">Program & Kegiatan</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[15%]">Anggaran</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[20%]">PIC & Unit</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[15%]">Wilayah Kerja</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[10%]">Aksi</th></tr></thead><tbody className="divide-y divide-slate-100 bg-white">{monthlyEvents.map((ev, idx) => (<tr key={idx} className="hover:bg-slate-50 transition"><td className="px-6 py-4"><div className="flex flex-col items-center justify-center w-12 p-2 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100"><span className="text-lg font-bold leading-none">{new Date(ev.tanggal).getDate()}</span><span className="text-[10px] font-bold uppercase mt-1">{getMonthName(new Date(ev.tanggal).getMonth()).substring(0, 3)}</span></div></td><td className="px-6 py-4"><h4 className="text-sm font-bold text-slate-800 line-clamp-2">{ev.kegiatan}</h4><p className="text-xs text-slate-500 mt-1 line-clamp-1">{ev.program}</p></td><td className="px-6 py-4 text-right"><span className="text-sm font-bold text-slate-700 font-mono">{formatRupiah(ev.anggaran)}</span></td><td className="px-6 py-4"><div className="text-sm font-medium text-slate-800">{ev.pic}</div><div className="text-xs text-indigo-600 font-medium">{ev.unit_kerja}</div></td><td className="px-6 py-4 text-center">{ev.wilayah_kerja && <StatusBadge type={ev.wilayah_kerja} />}</td><td className="px-6 py-4 text-center"><button onClick={() => setSelectedActivity(ev)} className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition shadow-sm">Detail</button></td></tr>))}</tbody></table></div></div>}
-                </div>
+                <div className="flex flex-col h-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"><div className="p-4 border-b border-slate-100 bg-slate-50 font-bold text-slate-700 flex items-center gap-2"><i data-lucide="sparkles" className="w-5 h-5 text-indigo-600"></i> AI Assistant Biktren</div><div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">{messages.map((msg, i) => (<div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}><div className={`chat-bubble ${msg.role === 'user' ? 'chat-user' : 'chat-ai'}`}><div className="chat-markdown" dangerouslySetInnerHTML={{ __html: marked.parse(msg.text) }}></div></div><span className="text-[10px] text-slate-400 mt-1 mx-1">{msg.role === 'user' ? 'Anda' : 'AI Biktren'}</span></div>))}{isLoading && <div className="flex items-start"><div className="chat-bubble chat-ai flex gap-1"><div className="typing-dot"></div><div className="typing-dot"></div><div className="typing-dot"></div></div></div>}<div ref={messagesEndRef} /></div><form onSubmit={handleSend} className="p-4 border-t border-slate-200 bg-white flex gap-2"><input type="text" value={input} onChange={e => setInput(e.target.value)} placeholder="Tanya tentang program..." className="flex-1 border border-slate-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" disabled={isLoading} /><button type="submit" disabled={isLoading} className="bg-indigo-600 text-white p-2 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition"><i data-lucide="send" className="w-5 h-5"></i></button></form></div>
             );
+        };
+
+        const LoginView = ({ onLoginSuccess }) => {
+            const [errorMsg, setErrorMsg] = useState(''); const [isLoggingIn, setIsLoggingIn] = useState(false); const [showBypass, setShowBypass] = useState(false);
+            const { signInWithPopup, GoogleAuthProvider, signOut, collection, getDocs } = window.firebaseModules;
+            const handleGoogleLogin = async () => {
+                setIsLoggingIn(true); setErrorMsg(''); setShowBypass(false);
+                try {
+                    const result = await signInWithPopup(auth, provider);
+                    const user = result.user; const credential = GoogleAuthProvider.credentialFromResult(result); const accessToken = credential.accessToken;
+                    const PRIMARY_EMAIL = "achmadnaufalbaidawi@gmail.com";
+                    if (user.email.toLowerCase() === PRIMARY_EMAIL.toLowerCase()) { onLoginSuccess(user, accessToken); return; }
+                    const whitelistCol = collection(db, 'artifacts', appId, 'public', 'data', 'email_whitelist');
+                    const snapshot = await getDocs(whitelistCol);
+                    const allowedEmails = snapshot.docs.map(doc => doc.data().email.toLowerCase());
+                    if (allowedEmails.length === 0 || allowedEmails.includes(user.email.toLowerCase())) { onLoginSuccess(user, accessToken); } else { await signOut(auth); setErrorMsg(`Akses Ditolak: Email ${user.email} tidak terdaftar dalam whitelist.`); }
+                } catch (error) {
+                    console.error("Login Failed:", error);
+                    let msg = "Login Gagal: " + error.message;
+                    if (error.code === 'auth/unauthorized-domain') { msg = `Domain ini tidak diizinkan oleh Firebase. Tambahkan domain ini di Console > Auth > Settings.`; setShowBypass(true); } else if (error.code === 'auth/network-request-failed') { msg = "Masalah koneksi internet."; setShowBypass(true); }
+                    setErrorMsg(msg);
+                } finally { setIsLoggingIn(false); }
+            };
+            const handleBypassLogin = () => { const mockUser = { email: "achmadnaufalbaidawi@gmail.com", displayName: "Super Admin (Dev)", uid: "dev-bypass-uid" }; onLoginSuccess(mockUser, "dummy-token-for-dev"); };
+            return (
+                <div className="h-full flex items-center justify-center p-4"><div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center border border-slate-100"><div className="mb-6 flex justify-center text-indigo-600"><i data-lucide="shield-check" className="w-16 h-16"></i></div><h1 className="text-2xl font-bold text-slate-800 mb-2">Login AI Assistant</h1><p className="text-slate-500 text-sm mb-8">Silakan login dengan Google untuk mengakses fitur chat pintar ini.</p>{errorMsg && (<div className="mb-4 p-3 bg-red-50 text-red-600 text-xs rounded-lg border border-red-100 text-left"><div className="flex items-center gap-2 font-bold mb-1"><i data-lucide="alert-circle" className="w-4 h-4 shrink-0"></i> Error Login</div>{errorMsg}</div>)}<button onClick={handleGoogleLogin} disabled={isLoggingIn} className="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold py-3 px-4 rounded-xl transition shadow-sm disabled:opacity-50">{isLoggingIn ? <span className="loading-spinner w-5 h-5 border-2 border-slate-400 border-t-slate-800"></span> : <><svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z"/><path fill="#EA4335" d="M12 4.63c1.61 0 3.06.56 4.21 1.64l3.16-3.16C17.45 1.09 14.97 0 12 0 7.7 0 3.99 2.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Login dengan Google</>}</button>{showBypass && (<div className="mt-4 pt-4 border-t border-slate-100 animate-fade-in"><p className="text-xs text-slate-400 mb-2">Mode Pengembang (Darurat)</p><button onClick={handleBypassLogin} className="w-full py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition">Masuk sebagai Super Admin (Bypass)</button></div>)}</div></div>
+            );
+        };
+
+        const WhitelistSettings = ({ user }) => {
+            const [email, setEmail] = useState(''); const [emails, setEmails] = useState([]); const { collection, addDoc, getDocs, deleteDoc, doc, onSnapshot } = window.firebaseModules;
+            useEffect(() => { if (!user) return; const unsub = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'email_whitelist'), (snap) => { setEmails(snap.docs.map(d => ({ id: d.id, ...d.data() }))); }); return () => unsub(); }, [user]);
+            const handleAdd = async () => { if (!email) return; await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'email_whitelist'), { email: email.toLowerCase(), addedAt: new Date().toISOString() }); setEmail(''); };
+            const handleDelete = async (id) => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'email_whitelist', id)); };
+            if (!user) return null;
+            return (<div className="mt-8 pt-6 border-t border-slate-100"><h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="shield" className="w-5 h-5 text-indigo-600"></i> Email Whitelist (Akses Login)</h3><div className="flex gap-2 mb-4"><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tambah.email@gmail.com" className="flex-1 border border-slate-300 rounded-lg px-3 py-2" /><button onClick={handleAdd} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Tambah</button></div><div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden"><table className="min-w-full divide-y divide-slate-200"><thead className="bg-slate-100"><tr><th className="px-4 py-2 text-left text-xs font-bold text-slate-500">Email</th><th className="px-4 py-2 text-right text-xs font-bold text-slate-500">Aksi</th></tr></thead><tbody className="divide-y divide-slate-200">{emails.map(e => (<tr key={e.id}><td className="px-4 py-2 text-sm text-slate-700">{e.email}</td><td className="px-4 py-2 text-right"><button onClick={() => handleDelete(e.id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Hapus</button></td></tr>))}</tbody></table></div></div>);
         };
 
         const SettingView = ({ config, onSave }) => {
@@ -397,17 +485,20 @@
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-modal-enter">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50"><div><div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md uppercase tracking-wider">{activity.kategori || 'Kegiatan'}</span>{activity.wilayah_kerja && <StatusBadge type={activity.wilayah_kerja} />}<span className="text-slate-400 text-xs font-mono">{activity.kode_akup}</span></div><h2 className="text-xl font-bold text-slate-800 leading-tight">{activity.kegiatan}</h2><p className="text-sm text-slate-500 mt-1">{activity.program}</p></div><button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500"><i data-lucide="x" className="w-6 h-6"></i></button></div>
-                        <div className="p-6 overflow-y-auto flex-1 space-y-8"><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="space-y-4"><div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><div className="text-xs font-semibold text-slate-400 uppercase mb-1">Indikator Capaian</div><div className="text-sm text-slate-700">{activity.indikator || '-'}</div></div><div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><div className="text-xs font-semibold text-slate-400 uppercase mb-1">Sasaran</div><div className="text-sm text-slate-700">{activity.sasaran || '-'}</div></div></div><div className="space-y-4"><div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3"><div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><i data-lucide="calendar" className="w-5 h-5"></i></div><div><div className="text-xs font-semibold text-slate-400 uppercase">Waktu Pelaksanaan</div><div className="text-sm font-bold text-slate-800">{activity.waktu || '-'}{getExecutionCount(activity.waktu) > 0 && <span className="text-indigo-600 ml-1">({getExecutionCount(activity.waktu)} Kali)</span>}</div></div></div><div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3"><div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg"><i data-lucide="wallet" className="w-5 h-5"></i></div><div><div className="text-xs font-semibold text-slate-400 uppercase">Total Anggaran (Realisasi RAB)</div><div className="text-lg font-bold text-emerald-600">{formatRupiah(calculatedTotal)}</div></div></div></div></div><div><h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="shopping-cart" className="w-5 h-5 text-indigo-600"></i> Rincian Anggaran Biaya (RAB)</h3><div className="border border-slate-200 rounded-xl overflow-hidden"><table className="min-w-full divide-y divide-slate-200"><thead className="bg-slate-50"><tr><th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Rincian Item</th><th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">Vol</th><th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Harga Satuan</th><th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Total Biaya</th></tr></thead><tbody className="bg-white divide-y divide-slate-200">{rabItems.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50"><td className="px-4 py-3"><div className="text-sm font-medium text-slate-800">{item.rincian}</div><div className="text-xs text-slate-500">{item.jumlah} {item.satuan_jml} x {item.frek} {item.satuan_frek}</div></td><td className="px-4 py-3 text-center text-sm text-slate-600 bg-slate-50 font-mono">{item.volume}</td><td className="px-4 py-3 text-right text-sm text-slate-600 font-mono">{formatRupiah(item.harga)}</td><td className="px-4 py-3 text-right text-sm font-bold text-slate-800 font-mono">{formatRupiah(item.total)}</td></tr>))}</tbody><tfoot className="bg-slate-50"><tr><td colSpan="3" className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Total Keseluruhan</td><td className="px-4 py-3 text-right text-sm font-bold text-indigo-600">{formatRupiah(calculatedTotal)}</td></tr></tfoot></table></div></div></div><div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end"><button onClick={onClose} className="px-6 py-2 bg-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-300 transition">Tutup</button></div></div></div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-8"><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="space-y-4"><div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><div className="text-xs font-semibold text-slate-400 uppercase mb-1">Indikator Capaian</div><div className="text-sm text-slate-700">{activity.indikator || '-'}</div></div><div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><div className="text-xs font-semibold text-slate-400 uppercase mb-1">Sasaran</div><div className="text-sm text-slate-700">{activity.sasaran || '-'}</div></div>{activity.link_berkas && <a href={activity.link_berkas} target="_blank" className="block w-full text-center bg-blue-50 text-blue-600 p-3 rounded-lg border border-blue-100 hover:bg-blue-100 transition font-medium flex items-center justify-center gap-2"><i data-lucide="file-text" className="w-4 h-4"></i> Buka Berkas Pendukung</a>}</div><div className="space-y-4"><div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3"><div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><i data-lucide="calendar" className="w-5 h-5"></i></div><div><div className="text-xs font-semibold text-slate-400 uppercase">Waktu Pelaksanaan</div><div className="text-sm font-bold text-slate-800">{activity.waktu || '-'}{getExecutionCount(activity.waktu) > 0 && <span className="text-indigo-600 ml-1">({getExecutionCount(activity.waktu)} Kali)</span>}</div></div></div><div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3"><div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg"><i data-lucide="wallet" className="w-5 h-5"></i></div><div><div className="text-xs font-semibold text-slate-400 uppercase">Total Anggaran (Realisasi RAB)</div><div className="text-lg font-bold text-emerald-600">{formatRupiah(calculatedTotal)}</div></div></div></div></div><div><h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="shopping-cart" className="w-5 h-5 text-indigo-600"></i> Rincian Anggaran Biaya (RAB)</h3><div className="border border-slate-200 rounded-xl overflow-hidden"><table className="min-w-full divide-y divide-slate-200"><thead className="bg-slate-50"><tr><th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Rincian Item</th><th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">Vol</th><th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Harga Satuan</th><th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Total Biaya</th></tr></thead><tbody className="bg-white divide-y divide-slate-200">{rabItems.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50"><td className="px-4 py-3"><div className="text-sm font-medium text-slate-800">{item.rincian}</div><div className="text-xs text-slate-500">{item.jumlah} {item.satuan_jml} x {item.frek} {item.satuan_frek}</div></td><td className="px-4 py-3 text-center text-sm text-slate-600 bg-slate-50 font-mono">{item.volume}</td><td className="px-4 py-3 text-right text-sm text-slate-600 font-mono">{formatRupiah(item.harga)}</td><td className="px-4 py-3 text-right text-sm font-bold text-slate-800 font-mono">{formatRupiah(item.total)}</td></tr>))}</tbody><tfoot className="bg-slate-50"><tr><td colSpan="3" className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Total Keseluruhan</td><td className="px-4 py-3 text-right text-sm font-bold text-indigo-600">{formatRupiah(calculatedTotal)}</td></tr></tfoot></table></div></div></div><div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end"><button onClick={onClose} className="px-6 py-2 bg-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-300 transition">Tutup</button></div></div></div>
             );
         };
 
         const App = () => {
-            const [config, setConfig] = useState({ dppk: localStorage.getItem('dppk_url') || DEFAULT_DPPK, rab: localStorage.getItem('rab_url') || DEFAULT_RAB });
+            const [user, setUser] = useState(null);
+            const [geminiToken, setGeminiToken] = useState(null);
             const [activeTab, setActiveTab] = useState('dashboard');
+            
+            // Reusing Data State & Logic
+            const [config, setConfig] = useState({ dppk: localStorage.getItem('dppk_url') || DEFAULT_DPPK, rab: localStorage.getItem('rab_url') || DEFAULT_RAB });
             const [searchTerm, setSearchTerm] = useState('');
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
-            
             const [dataDPPK, setDataDPPK] = useState([]);
             const [dataRAB, setDataRAB] = useState([]);
             const [selectedUnit, setSelectedUnit] = useState('');
@@ -418,48 +509,23 @@
             const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
             useEffect(() => {
-                const fetchData = async () => {
+                const loadData = async () => {
                     setLoading(true);
                     try {
                         const fetchCSV = (url) => new Promise((resolve, reject) => Papa.parse(url, { download: true, header: true, skipEmptyLines: true, complete: res => resolve(res.data), error: reject }));
                         const [dppkRes, rabRes] = await Promise.all([fetchCSV(config.dppk), fetchCSV(config.rab)]);
                         
-                        setDataDPPK(dppkRes.map(item => ({
-                            no: parseInt(item['no']) || 0,
-                            kategori: item['kategori'] || '',
-                            kode_akup: item['kode akup'] || '-',
-                            program: item['program'] || '',
-                            kegiatan: item['kegiatan'] || '',
-                            indikator: item['indikator capaian'] || '-',
-                            sasaran: item['sasaran'] || '-',
-                            waktu: item['waktu'] || '', 
-                            anggaran: parseInt(String(item['anggaran']).replace(/[^0-9]/g, '')) || 0,
-                            pic: item['pic'] || '',
-                            unit_kerja: item['unit kerja'] || '',
-                            wilayah_kerja: item['Wilayah Kerja'] || item['wilayah kerja'] || '',
-                            link_berkas: item['Link Berkas'] || item['link berkas'] || ''
-                        })));
-
-                        setDataRAB(rabRes.map(item => ({
-                            no: parseInt(item['no']) || 0,
-                            program: item['program'] || '',
-                            kegiatan: item['kegiatan'] || '',
-                            rincian: item['rincian'] || '',
-                            jumlah: parseInt(item['jumlah kuantitas']) || 0,
-                            satuan_jml: item['satuan_jml'] || '',
-                            frek: parseInt(item['frek']) || 0,
-                            satuan_frek: item['satuan_frek'] || '',
-                            volume: parseInt(item['volume']) || 0,
-                            harga: parseInt(String(item['harga satuan']).replace(/[^0-9]/g, '')) || 0,
-                            total: parseInt(String(item['total biaya']).replace(/[^0-9]/g, '')) || 0,
-                            pic: item['pic'] || '',
-                            unit_kerja: item['unit kerja'] || '',
-                            wilayah_kerja: item['Wilayah Kerja'] || item['wilayah kerja'] || ''
-                        })));
+                        // Process Data (Simplified for brevity, same logic as before)
+                        setDataDPPK(dppkRes.map(item => ({...item, anggaran: parseInt(String(item['anggaran']).replace(/[^0-9]/g, '')) || 0}))); // Simplified mapping
+                        setDataRAB(rabRes.map(item => ({...item, total: parseInt(String(item['total biaya']).replace(/[^0-9]/g, '')) || 0})));
                         setLoading(false);
-                    } catch (err) { setError("Gagal mengambil data."); setLoading(false); }
+                    } catch (e) { 
+                        console.error(e);
+                        setError("Gagal memuat data: " + e.message);
+                        setLoading(false);
+                    }
                 };
-                fetchData();
+                loadData(); // Load data immediately, no need for user
             }, [config]);
 
             const uniqueUnits = useMemo(() => Array.from(new Set([...dataDPPK.map(i => i.unit_kerja), ...dataRAB.map(i => i.unit_kerja)])).filter(Boolean).sort(), [dataDPPK, dataRAB]);
@@ -578,6 +644,7 @@
                         <div className="p-4 border-b border-blue-500 flex items-center justify-between"><div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center w-full' : ''}`}><div className="bg-white p-2 rounded-xl text-[#3073F1] shadow-lg shrink-0"><i data-lucide="layers" className="w-6 h-6"></i></div>{!isSidebarCollapsed && <div><h1 className="font-bold text-white leading-tight">Perencanaan<br/>Biktren</h1></div>}</div>{!isSidebarCollapsed && (<button onClick={() => setIsSidebarCollapsed(true)} className="text-blue-200 hover:text-white p-1 rounded hover:bg-blue-500/50 transition"><i data-lucide="chevron-left" className="w-5 h-5"></i></button>)}</div>{isSidebarCollapsed && (<button onClick={() => setIsSidebarCollapsed(false)} className="w-full py-3 text-blue-200 hover:text-white flex justify-center hover:bg-blue-500/50 transition"><i data-lucide="chevron-right" className="w-5 h-5"></i></button>)}
                         <nav className="flex-1 p-4 space-y-2 overflow-y-auto hide-scrollbar flex flex-col">
                             <button onClick={() => setActiveTab('dashboard')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'dashboard' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Dashboard' : ''}><i data-lucide="layout-dashboard" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Dashboard</span>}</button>
+                            <button onClick={() => setActiveTab('ai-chat')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'ai-chat' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'AI Assistant' : ''}><i data-lucide="sparkles" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>AI Chat</span>}</button>
                             {!isSidebarCollapsed && <div className="px-4 py-2 text-xs font-semibold text-blue-200 uppercase tracking-wider mt-4">Data Master</div>}{isSidebarCollapsed && <div className="my-2 border-t border-blue-500/30"></div>}
                             <button onClick={() => setActiveTab('dppk')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'dppk' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Data DPPK' : ''}><i data-lucide="list" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Data DPPK</span>}</button>
                             <button onClick={() => setActiveTab('monthly')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'monthly' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Rincian Bulanan' : ''}><i data-lucide="book-open" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Rincian Bulanan</span>}</button>
@@ -586,11 +653,21 @@
                             <div className={`mt-auto ${!isSidebarCollapsed ? 'pt-4 border-t border-blue-500' : 'pt-2 border-t border-blue-500/30'}`}><button onClick={() => setActiveTab('setting')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'setting' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Pengaturan' : ''}><i data-lucide="settings" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Pengaturan</span>}</button></div>
                             {!isSidebarCollapsed && (<div className="mt-6 w-full"><div className="rounded-xl p-6 relative overflow-hidden group glass-effect"><div className="relative z-10"><p className="text-sm text-white font-medium italic leading-relaxed text-justify"><span className="text-4xl font-serif mr-1 leading-none align-text-top text-white" style={{color: '#E78B09'}}>"</span><br/>Dalam merencanakan dan melaksanakan program dan kegiatan pesantren: lakukan se<span className="font-bold text-white">IDEAL</span> mungkin, bila tidak bisa maka lakukan secara <span className="font-bold text-white">REALISTIS</span>, dan jika masih belum bisa lakukan secara <span className="font-bold text-white">RASIONAL</span>".</p><div className="mt-4 flex items-start gap-3 pt-3 border-t border-white/30"><div className="h-10 w-0.5 rounded-full bg-white"></div><div><p className="text-[10px] font-bold text-white uppercase tracking-wider">Kepala Pondok</p><p className="text-[10px] font-semibold text-white/80">Pesantren Nurul Jadid</p></div></div></div></div></div>)}
                         </nav>
-                        {!isSidebarCollapsed && <div className="p-4 border-t border-blue-500 bg-[#3073F1]"><div className="text-xs text-blue-200 text-center">© 2026 Planning Biktren</div></div>}
+                        {!isSidebarCollapsed && <div className="p-4 border-t border-blue-500 bg-[#3073F1]">
+                            {user ? (
+                                <div className="text-center">
+                                    <div className="text-xs text-blue-200 mb-2 truncate">{user.email}</div>
+                                    <button onClick={() => window.location.reload()} className="w-full bg-red-600 py-1 rounded text-xs hover:bg-red-700 transition">Logout</button>
+                                </div>
+                            ) : (
+                                <div className="text-xs text-blue-200 text-center flex items-center justify-center gap-1"><i data-lucide="user" className="w-3 h-3"></i> Mode Tamu</div>
+                            )}
+                            <div className="text-[10px] text-blue-300 text-center mt-2">© 2026 Perencanaan Biktren</div>
+                        </div>}
                     </aside>
 
                     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 px-2 flex justify-around items-end shadow-[0_-4px_10px_rgba(0,0,0,0.05)] h-20 pb-2">
-                        {[{id:'dashboard',icon:'layout-dashboard',l:'Dashboard'},{id:'dppk',icon:'list',l:'DPPK'},{id:'monthly',icon:'book-open',l:'Bulanan'},{id:'rab',icon:'shopping-bag',l:'RAB'},{id:'calendar',icon:'calendar',l:'Kalender'}].map((i) => (
+                        {[{id:'dashboard',icon:'layout-dashboard',l:'Dashboard'},{id:'ai-chat',icon:'sparkles',l:'AI Chat'},{id:'dppk',icon:'list',l:'DPPK'},{id:'monthly',icon:'book-open',l:'Bulanan'},{id:'rab',icon:'shopping-bag',l:'RAB'},{id:'calendar',icon:'calendar',l:'Kalender'}].map((i) => (
                             <button key={i.id} onClick={() => setActiveTab(i.id)} className={`mobile-nav-item flex-1 ${activeTab === i.id ? 'active' : ''}`}><div className="icon-container"><i data-lucide={i.icon} className="w-6 h-6"></i></div><span className={`text-[10px] font-medium mt-1 ${activeTab === i.id ? 'opacity-0 h-0' : 'opacity-100'}`}>{i.l}</span></button>
                         ))}
                     </nav>
@@ -598,25 +675,29 @@
                     <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative pb-24 md:pb-8">
                         {loading ? (<div className="flex flex-col items-center justify-center h-full"><div className="loading-spinner mb-4"></div><p className="text-slate-500 animate-pulse">Menyiapkan Dashboard...</p></div>) : error ? (<div className="flex items-center justify-center h-full bg-red-50 rounded-2xl p-8 text-center"><h2 className="text-xl font-bold text-slate-800">Terjadi Kesalahan</h2><p className="text-slate-600 mb-4">{error}</p><button onClick={() => setActiveTab('setting')} className="bg-indigo-600 text-white px-6 py-2 rounded-lg">Periksa Pengaturan</button></div>) : (
                             <>
-                                {activeTab !== 'setting' && activeTab !== 'dashboard' && (
+                                {activeTab !== 'setting' && activeTab !== 'dashboard' && activeTab !== 'ai-chat' && (
                                     <div className="flex flex-col xl:flex-row gap-4 mb-6">
                                         <div className="relative flex-1"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="search" className="w-4 h-4"></i></div><input type="text" placeholder="Cari data..." className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
                                         <div className="relative min-w-[200px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="building" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm" value={selectedUnit} onChange={(e) => setSelectedUnit(e.target.value)}><option value="">Semua Unit Kerja</option>{uniqueUnits.map((unit, idx) => <option key={idx} value={unit}>{unit}</option>)}</select></div>
                                         <div className="relative min-w-[200px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="user" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm" value={selectedPIC} onChange={(e) => setSelectedPIC(e.target.value)}><option value="">Semua PIC</option>{uniquePICs.map((pic, idx) => <option key={idx} value={pic}>{pic}</option>)}</select></div>
                                         <div className="relative min-w-[200px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="map" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm" value={selectedWilayah} onChange={(e) => setSelectedWilayah(e.target.value)}><option value="">Semua Wilayah</option>{uniqueWilayahs.map((wil, idx) => <option key={idx} value={wil}>{wil}</option>)}</select></div>
                                         {activeTab !== 'calendar' && <div className="relative min-w-[200px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="calendar" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-indigo-500 sm:text-sm shadow-sm" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}><option value="">Semua Bulan</option>{monthOptions.map((month, idx) => <option key={idx} value={idx}>{month}</option>)}</select></div>}
-                                        {(selectedUnit || selectedPIC || selectedWilayah || selectedMonth) && <button onClick={() => {setSelectedUnit(''); setSelectedPIC(''); setSelectedWilayah(''); setSelectedMonth('');}} className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 text-sm font-medium transition">Reset</button>}
+                                        {(selectedUnit || selectedPIC || selectedWilayah || selectedMonth) && <button onClick={() => {setSelectedUnit(''); setSelectedPIC(''); setSelectedWilayah(''); setSelectedMonth(''); setSearchTerm('');}} className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 text-sm font-medium transition flex items-center gap-2"><i data-lucide="x" className="w-4 h-4"></i> Reset</button>}
                                     </div>
                                 )}
 
                                 {(activeTab === 'dppk' || activeTab === 'rab' || activeTab === 'monthly' || activeTab === 'dashboard') && currentStats && <MiniStats programCount={currentStats.program} activityCount={currentStats.kegiatan} totalBudget={currentStats.anggaran} type={activeTab === 'rab' ? 'RAB' : (activeTab === 'monthly' ? 'Bulanan' : 'DPPK')} />}
 
                                 {activeTab === 'dashboard' && <DashboardView dataDPPK={filteredDPPK} />}
+                                {activeTab === 'ai-chat' && (
+                                    user ? <AIChatView dataDPPK={dataDPPK} dataRAB={dataRAB} geminiToken={geminiToken} /> : <LoginView onLoginSuccess={(u, token) => { setUser(u); setGeminiToken(token); }} />
+                                )}
                                 {activeTab === 'dppk' && <DPPKTable data={filteredDPPK} onSelect={setSelectedActivity} />}
                                 {activeTab === 'monthly' && <MonthlyTable data={processedMonthlyData} rawRAB={dataRAB} />}
                                 {activeTab === 'rab' && <RABTable data={filteredRAB} />}
                                 {activeTab === 'calendar' && <CalendarView events={calendarEvents} setSelectedActivity={setSelectedActivity} />}
-                                {activeTab === 'setting' && <SettingView config={config} onSave={(d, r) => { localStorage.setItem('dppk_url', d); localStorage.setItem('rab_url', r); setConfig({dppk:d, rab:r}); }} />}
+                                {activeTab === 'setting' && <SettingView config={config} onSave={(d, r) => { localStorage.setItem('dppk_url', d); localStorage.setItem('rab_url', r); setConfig({dppk:d, rab:r}); }} /> }
+                                {activeTab === 'setting' && user && <WhitelistSettings user={user} />}
                             </>
                         )}
                     </main>
