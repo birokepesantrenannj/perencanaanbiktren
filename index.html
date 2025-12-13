@@ -42,18 +42,18 @@
         .mobile-nav-wrapper { position: fixed; bottom: 24px; left: 0; right: 0; z-index: 999; display: flex; justify-content: center; pointer-events: none; }
         .mobile-nav-container { pointer-events: auto; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); border-radius: 28px; padding: 6px; display: flex; align-items: center; gap: 4px; max-width: 95%; overflow-x: auto; scrollbar-width: none; }
         .mobile-nav-container::-webkit-scrollbar { display: none; }
-        .mobile-nav-item { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: center; min-width: 44px; height: 44px; border-radius: 9999px; color: #64748b; background: transparent; transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; border: none; overflow: hidden; padding: 0; }
-        .mobile-nav-item.active { background: #3073F1; color: white; padding-left: 14px; padding-right: 18px; box-shadow: 0 4px 12px rgba(48, 115, 241, 0.3); }
-        .mobile-nav-item:not(.active):hover { background-color: #f1f5f9; }
-        .mobile-nav-item .icon { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-        .mobile-nav-item span { font-size: 11px; font-weight: 600; white-space: nowrap; margin-left: 0; max-width: 0; opacity: 0; transition: all 0.35s ease; }
-        .mobile-nav-item.active span { max-width: 120px; opacity: 1; margin-left: 8px; }
-
+        .mobile-nav-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 60px; height: 60px; border-radius: 22px; color: #64748b; background: transparent; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); flex-shrink: 0; }
+        .mobile-nav-item.active { color: #ffffff; background: #3073F1; box-shadow: 0 8px 20px -6px rgba(48, 115, 241, 0.6); transform: translateY(-8px) scale(1.05); padding-left: 12px; padding-right: 16px; width: auto; }
+        .mobile-nav-item:not(.active):active { transform: scale(0.95); }
+        .mobile-nav-item .icon { width: 22px; height: 22px; margin-bottom: 0; }
+        .mobile-nav-item span { font-size: 9px; font-weight: 600; opacity: 0; max-width: 0; white-space: nowrap; overflow: hidden; margin-left: 0; transition: all 0.3s; }
+        .mobile-nav-item.active span { opacity: 1; max-width: 100px; margin-left: 8px; }
         @media (max-width: 768px) { .main-content { padding-bottom: 120px !important; } }
     </style>
 </head>
 <body>
     <div id="root"></div>
+    <!-- MODAL ROOT UNTUK REACT PORTAL -->
     <div id="modal-root"></div>
 
     <script type="text/babel">
@@ -78,6 +78,7 @@
             auth = getAuth(app);
             db = getFirestore(app);
             provider = new GoogleAuthProvider();
+            // Add scope for Gemini AI (Vertex AI/Generative Language)
             provider.addScope('https://www.googleapis.com/auth/generative-language.retriever.readonly');
             provider.addScope('https://www.googleapis.com/auth/cloud-platform'); 
         }
@@ -111,7 +112,7 @@
             return waktuStr.split(',').map(s => s.trim()).filter(s => s.length > 0).length;
         };
 
-        // --- COMPONENT: MODAL PORTAL ---
+        // --- COMPONENT: MODAL PORTAL (CORE FIX) ---
         const ModalPortal = ({ children }) => {
             const modalRoot = document.getElementById('modal-root');
             if (!modalRoot) return null;
@@ -153,9 +154,18 @@
 
         const MiniStats = ({ programCount, activityCount, totalBudget, type }) => (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 animate-fade-in">
-                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #3073F1 0%, #4a84f3 100%)' }}><div><p className="text-xs font-semibold text-blue-100 uppercase">Total Program</p><h3 className="text-xl font-bold text-white">{programCount}</h3></div><div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="layers" className="w-5 h-5"></i></div></div>
-                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #0BA875 0%, #20c58e 100%)' }}><div><p className="text-xs font-semibold text-emerald-100 uppercase">Total Kegiatan {type === 'RAB' ? '(Unik)' : ''}</p><h3 className="text-xl font-bold text-white">{activityCount}</h3></div><div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="activity" className="w-5 h-5"></i></div></div>
-                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #E78B09 0%, #f5a636 100%)' }}><div><p className="text-xs font-semibold text-amber-100 uppercase">Total Anggaran</p><h3 className="text-xl font-bold text-white">{formatRupiah(totalBudget)}</h3></div><div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="wallet" className="w-5 h-5"></i></div></div>
+                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #3073F1 0%, #4a84f3 100%)' }}>
+                    <div><p className="text-xs font-semibold text-blue-100 uppercase">Total Program</p><h3 className="text-xl font-bold text-white">{programCount}</h3></div>
+                    <div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="layers" className="w-5 h-5"></i></div>
+                </div>
+                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #0BA875 0%, #20c58e 100%)' }}>
+                    <div><p className="text-xs font-semibold text-emerald-100 uppercase">Total Kegiatan {type === 'RAB' ? '(Unik)' : ''}</p><h3 className="text-xl font-bold text-white">{activityCount}</h3></div>
+                    <div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="activity" className="w-5 h-5"></i></div>
+                </div>
+                <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #E78B09 0%, #f5a636 100%)' }}>
+                    <div><p className="text-xs font-semibold text-amber-100 uppercase">Total Anggaran</p><h3 className="text-xl font-bold text-white">{formatRupiah(totalBudget)}</h3></div>
+                    <div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="wallet" className="w-5 h-5"></i></div>
+                </div>
             </div>
         );
 
@@ -242,7 +252,7 @@
             );
         };
 
-        // --- DEFINISI ACTIVITY DETAIL MODAL ---
+        // --- DEFINISI ACTIVITY DETAIL MODAL (DIPASTIKAN ADA SEBELUM APP) ---
         const ActivityDetailModal = ({ activity, rabItems, onClose }) => {
             const calculatedTotal = useMemo(() => rabItems.reduce((acc, item) => acc + (item.total || 0), 0), [rabItems]);
             const executionCount = getExecutionCount(activity.waktu);
@@ -256,7 +266,10 @@
         };
 
         const App = () => {
+            const [user, setUser] = useState(null); // No longer used but kept for structure compatibility
+            const [geminiToken, setGeminiToken] = useState(null); // No longer used
             const [activeTab, setActiveTab] = useState('dashboard');
+            
             const [config, setConfig] = useState({ dppk: localStorage.getItem('dppk_url') || DEFAULT_DPPK, rab: localStorage.getItem('rab_url') || DEFAULT_RAB });
             const [searchTerm, setSearchTerm] = useState('');
             const [loading, setLoading] = useState(true);
@@ -269,9 +282,11 @@
             const [selectedMonth, setSelectedMonth] = useState('');
             const [selectedCategory, setSelectedCategory] = useState('');
             const [selectedAkup, setSelectedAkup] = useState('');
+            const [selectedBudgetStatus, setSelectedBudgetStatus] = useState(''); // NEW FILTER STATE
             const [selectedActivity, setSelectedActivity] = useState(null);
             const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+            // Define Menu Items for Mapping (Fix for ReferenceError)
             const menuItems = [
                 { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
                 { id: 'dppk', label: 'Data DPPK', icon: 'list' },
@@ -285,41 +300,43 @@
                 const fetchData = async () => {
                     setLoading(true);
                     try {
-                        const fetchCSV = (url) => new Promise((resolve, reject) => Papa.parse(url, { download: true, header: true, skipEmptyLines: true, complete: res => resolve(res.data), error: reject }));
-                        const [dppkRes, rabRes] = await Promise.all([fetchCSV(config.dppk), fetchCSV(config.rab)]);
-                        
-                        setDataDPPK(dppkRes.map(item => ({
-                            no: parseInt(item['no']) || 0,
-                            kategori: item['kategori'] || '',
-                            kode_akup: item['kode akup'] || '-',
-                            program: item['program'] || '',
-                            kegiatan: item['kegiatan'] || '',
-                            indikator: item['indikator capaian'] || '-',
-                            sasaran: item['sasaran'] || '-',
-                            waktu: item['waktu'] || '', 
-                            anggaran: parseInt(String(item['anggaran']).replace(/[^0-9]/g, '')) || 0,
-                            pic: item['pic'] || '',
-                            unit_kerja: item['unit kerja'] || '',
-                            wilayah_kerja: item['Wilayah Kerja'] || item['wilayah kerja'] || '',
-                            link_berkas: item['Link Berkas'] || item['link berkas'] || ''
-                        })));
+                        if (config.dppk && config.rab) {
+                            const fetchCSV = (url) => new Promise((resolve, reject) => Papa.parse(url, { download: true, header: true, skipEmptyLines: true, complete: res => resolve(res.data), error: reject }));
+                            const [dppkRes, rabRes] = await Promise.all([fetchCSV(config.dppk), fetchCSV(config.rab)]);
+                            
+                            setDataDPPK(dppkRes.map(item => ({
+                                no: parseInt(item['no']) || 0,
+                                kategori: item['kategori'] || '',
+                                kode_akup: item['kode akup'] || '-',
+                                program: item['program'] || '',
+                                kegiatan: item['kegiatan'] || '',
+                                indikator: item['indikator capaian'] || '-',
+                                sasaran: item['sasaran'] || '-',
+                                waktu: item['waktu'] || '', 
+                                anggaran: parseInt(String(item['anggaran']).replace(/[^0-9]/g, '')) || 0,
+                                pic: item['pic'] || '',
+                                unit_kerja: item['unit kerja'] || '',
+                                wilayah_kerja: item['Wilayah Kerja'] || item['wilayah kerja'] || '',
+                                link_berkas: item['Link Berkas'] || item['link berkas'] || ''
+                            })));
 
-                        setDataRAB(rabRes.map(item => ({
-                            no: parseInt(item['no']) || 0,
-                            program: item['program'] || '',
-                            kegiatan: item['kegiatan'] || '',
-                            rincian: item['rincian'] || '',
-                            jumlah: parseInt(item['jumlah kuantitas']) || 0,
-                            satuan_jml: item['satuan_jml'] || '',
-                            frek: parseInt(item['frek']) || 0,
-                            satuan_frek: item['satuan_frek'] || '',
-                            volume: parseInt(item['volume']) || 0,
-                            harga: parseInt(String(item['harga satuan']).replace(/[^0-9]/g, '')) || 0,
-                            total: parseInt(String(item['total biaya']).replace(/[^0-9]/g, '')) || 0,
-                            pic: item['pic'] || '',
-                            unit_kerja: item['unit kerja'] || '',
-                            wilayah_kerja: item['Wilayah Kerja'] || item['wilayah kerja'] || ''
-                        })));
+                            setDataRAB(rabRes.map(item => ({
+                                no: parseInt(item['no']) || 0,
+                                program: item['program'] || '',
+                                kegiatan: item['kegiatan'] || '',
+                                rincian: item['rincian'] || '',
+                                jumlah: parseInt(item['jumlah kuantitas']) || 0,
+                                satuan_jml: item['satuan_jml'] || '',
+                                frek: parseInt(item['frek']) || 0,
+                                satuan_frek: item['satuan_frek'] || '',
+                                volume: parseInt(item['volume']) || 0,
+                                harga: parseInt(String(item['harga satuan']).replace(/[^0-9]/g, '')) || 0,
+                                total: parseInt(String(item['total biaya']).replace(/[^0-9]/g, '')) || 0,
+                                pic: item['pic'] || '',
+                                unit_kerja: item['unit kerja'] || '',
+                                wilayah_kerja: item['Wilayah Kerja'] || item['wilayah kerja'] || ''
+                            })));
+                        }
                         setLoading(false);
                     } catch (err) { setError("Gagal mengambil data."); setLoading(false); }
                 };
@@ -349,23 +366,61 @@
 
                 const matchesCategory = selectedCategory ? item.kategori === selectedCategory : true;
                 let matchesAkup = true;
-                if (selectedAkup === 'AKUP') matchesAkup = item.kode_akup && item.kode_akup !== '-';
-                else if (selectedAkup === 'NON-AKUP') matchesAkup = !item.kode_akup || item.kode_akup === '-';
-                else if (selectedAkup) matchesAkup = item.kode_akup === selectedAkup;
+                if (selectedAkup === 'AKUP') {
+                    matchesAkup = item.kode_akup && item.kode_akup !== '-';
+                } else if (selectedAkup === 'NON-AKUP') {
+                    matchesAkup = !item.kode_akup || item.kode_akup === '-';
+                } else if (selectedAkup) {
+                    matchesAkup = item.kode_akup === selectedAkup;
+                }
+
+                // NEW: Budget Status Filter Logic
+                const matchesBudget = selectedBudgetStatus === '' || 
+                    (selectedBudgetStatus === 'beranggaran' && (item.anggaran > 0 || item.total > 0)) ||
+                    (selectedBudgetStatus === 'non-anggaran' && (item.anggaran === 0 || item.total === 0));
 
                 return matchesSearch && 
                        (selectedUnit ? item.unit_kerja === selectedUnit : true) && 
                        (selectedPIC ? item.pic === selectedPIC : true) &&
                        (selectedWilayah ? item.wilayah_kerja === selectedWilayah : true) &&
-                       matchesMonth && matchesCategory && matchesAkup;
+                       matchesMonth && matchesCategory && matchesAkup && matchesBudget;
             };
 
-            const filteredDPPK = useMemo(() => (dataDPPK || []).filter(filterItem), [dataDPPK, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedMonth, selectedCategory, selectedAkup]);
+            const filteredDPPK = useMemo(() => (dataDPPK || []).filter(filterItem), [dataDPPK, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedMonth, selectedCategory, selectedAkup, selectedBudgetStatus]);
+            
+            const activityMonthMap = useMemo(() => {
+                const map = new Map();
+                dataDPPK.forEach(item => {
+                    if (item.kegiatan && item.waktu) {
+                        const key = item.kegiatan.trim().toLowerCase();
+                        const months = new Set();
+                        item.waktu.split(',').forEach(dateStr => { const date = parseIndonesianDate(dateStr); if (date) months.add(date.getMonth()); });
+                        if (months.size > 0) map.set(key, months);
+                    }
+                });
+                return map;
+            }, [dataDPPK]);
+
             const filteredRAB = useMemo(() => (dataRAB || []).filter(item => {
                  const search = searchTerm.toLowerCase();
                  const matchesSearch = (item.program?.toLowerCase().includes(search)) || (item.kegiatan?.toLowerCase().includes(search)) || (item.rincian?.toLowerCase().includes(search)) || (item.pic?.toLowerCase().includes(search));
-                 return matchesSearch && (selectedUnit ? item.unit_kerja === selectedUnit : true) && (selectedPIC ? item.pic === selectedPIC : true) && (selectedWilayah ? item.wilayah_kerja === selectedWilayah : true);
-            }), [dataRAB, searchTerm, selectedUnit, selectedPIC, selectedWilayah]);
+                 let matchesMonth = true;
+                 if (selectedMonth !== '') {
+                     const key = (item.kegiatan || '').trim().toLowerCase();
+                     const months = activityMonthMap.get(key);
+                     matchesMonth = months ? months.has(parseInt(selectedMonth)) : false; 
+                 }
+                 // Apply budget filter to RAB as well
+                 const matchesBudget = selectedBudgetStatus === '' || 
+                    (selectedBudgetStatus === 'beranggaran' && item.total > 0) ||
+                    (selectedBudgetStatus === 'non-anggaran' && item.total === 0);
+
+                 return matchesSearch && 
+                        (selectedUnit ? item.unit_kerja === selectedUnit : true) && 
+                        (selectedPIC ? item.pic === selectedPIC : true) &&
+                        (selectedWilayah ? item.wilayah_kerja === selectedWilayah : true) &&
+                        matchesMonth && matchesBudget;
+            }), [dataRAB, searchTerm, selectedUnit, selectedPIC, selectedWilayah, selectedMonth, activityMonthMap, selectedBudgetStatus]);
 
             const processedMonthlyData = useMemo(() => {
                 let monthlyRows = [];
@@ -387,9 +442,25 @@
             }, [filteredDPPK, selectedMonth]);
 
             const currentStats = useMemo(() => {
-                if (activeTab === 'dppk') return { program: new Set((filteredDPPK || []).map(d => d.program)).size, kegiatan: (filteredDPPK || []).length, anggaran: (filteredDPPK || []).reduce((acc, curr) => acc + (curr.anggaran || 0), 0) };
-                if (activeTab === 'rab') return { program: new Set((filteredRAB || []).map(d => d.program)).size, kegiatan: new Set((filteredRAB || []).map(d => d.kegiatan)).size, anggaran: (filteredRAB || []).reduce((acc, curr) => acc + (curr.total || 0), 0) };
-                if (activeTab === 'monthly') return { program: new Set(processedMonthlyData.map(d => d.program)).size, kegiatan: processedMonthlyData.length, anggaran: processedMonthlyData.reduce((acc, curr) => acc + (curr.monthlyBudget || 0), 0) };
+                if (activeTab === 'dppk') {
+                    return {
+                        program: new Set((filteredDPPK || []).map(d => d.program)).size,
+                        kegiatan: (filteredDPPK || []).length,
+                        anggaran: (filteredDPPK || []).reduce((acc, curr) => acc + (curr.anggaran || 0), 0)
+                    };
+                } else if (activeTab === 'rab') {
+                    return {
+                        program: new Set((filteredRAB || []).map(d => d.program)).size,
+                        kegiatan: new Set((filteredRAB || []).map(d => d.kegiatan)).size,
+                        anggaran: (filteredRAB || []).reduce((acc, curr) => acc + (curr.total || 0), 0)
+                    };
+                } else if (activeTab === 'monthly') {
+                     return {
+                        program: new Set(processedMonthlyData.map(d => d.program)).size,
+                        kegiatan: processedMonthlyData.length, 
+                        anggaran: processedMonthlyData.reduce((acc, curr) => acc + (curr.monthlyBudget || 0), 0)
+                    };
+                }
                 return null;
             }, [activeTab, filteredDPPK, filteredRAB, processedMonthlyData]);
 
@@ -422,6 +493,7 @@
 
             return (
                 <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 font-sans">
+                    {/* SIDEBAR */}
                     <aside className={`hidden md:flex flex-col bg-[#3073F1] border-r border-blue-600 h-screen sticky top-0 z-50 transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-72'}`}>
                         <div className="p-4 border-b border-blue-500 flex items-center justify-between">
                              <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center w-full' : ''}`}>
@@ -440,15 +512,35 @@
                             <button onClick={() => setActiveTab('rab')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'rab' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Rincian RAB' : ''}><i data-lucide="shopping-bag" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Rincian RAB</span>}</button>
                             <button onClick={() => setActiveTab('calendar')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'calendar' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Kalender Kerja' : ''}><i data-lucide="calendar" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Kalender Kerja</span>}</button>
                             <div className={`mt-auto ${!isSidebarCollapsed ? 'pt-4 border-t border-blue-500' : 'pt-2 border-t border-blue-500/30'}`}><button onClick={() => setActiveTab('setting')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'setting' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Pengaturan' : ''}><i data-lucide="settings" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Pengaturan</span>}</button></div>
+                            {/* QUOTE FEATURE RESTORED HERE */}
+                            {!isSidebarCollapsed && (
+                                <div className="mt-6 w-full">
+                                    <div className="rounded-xl p-6 relative overflow-hidden group glass-effect">
+                                        <div className="relative z-10">
+                                            <p className="text-sm text-white font-medium italic leading-relaxed text-justify">
+                                                <span className="text-4xl font-serif mr-1 leading-none align-text-top text-white" style={{color: '#E78B09'}}>"</span><br/>
+                                                Dalam merencanakan dan melaksanakan program dan kegiatan pesantren: lakukan se<span className="font-bold text-white">ideal</span> mungkin, bila tidak bisa maka lakukan secara <span className="font-bold text-white">realistis</span>, dan jika masih belum bisa lakukan secara <span className="font-bold text-white">rasional</span>".
+                                            </p>
+                                            <div className="mt-4 flex items-start gap-3 pt-3 border-t border-white/30">
+                                                <div className="h-10 w-0.5 rounded-full bg-white"></div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-white uppercase tracking-wider">Kepala Pondok</p>
+                                                    <p className="text-[10px] font-semibold text-white/80">Pesantren Nurul Jadid</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </nav>
-                        {!isSidebarCollapsed && <div className="p-4 border-t border-blue-500 bg-[#3073F1]"><div className="text-[10px] text-blue-300 text-center mt-2">© {currentYear} Perencanaan Biktren</div></div>}
+                        {!isSidebarCollapsed && <div className="p-4 border-t border-blue-500 bg-[#3073F1]"><div className="text-[10px] text-blue-300 text-center mt-2">© 2026 Perencanaan Biktren</div></div>}
                     </aside>
                     <div className="md:hidden mobile-nav-wrapper"><nav className="mobile-nav-container">{menuItems.filter(item => item.id !== 'ai-chat').map((item) => (<button key={item.id} onClick={() => setActiveTab(item.id)} className={`mobile-nav-item ${activeTab === item.id ? 'active' : ''}`}><div className="icon"><i data-lucide={item.icon} className="w-full h-full"></i></div><span>{item.label}</span></button>))}</nav></div>
                     <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative pb-32 md:pb-8 main-content">
                         {loading ? (<div className="flex flex-col items-center justify-center h-full"><div className="loading-spinner mb-4"></div><p className="text-slate-500 animate-pulse">Menyiapkan Dashboard...</p></div>) : error ? (<div className="flex items-center justify-center h-full bg-red-50 rounded-2xl p-8 text-center"><h2 className="text-xl font-bold text-slate-800">Terjadi Kesalahan</h2><p className="text-slate-600 mb-4">{error}</p><button onClick={() => setActiveTab('setting')} className="bg-indigo-600 text-white px-6 py-2 rounded-lg">Periksa Pengaturan</button></div>) : (
                             <>
                                 {activeTab !== 'setting' && activeTab !== 'dashboard' && (
-                                    <div className="flex flex-col xl:flex-row gap-4 mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                                    <div className="flex flex-wrap items-center gap-4 mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                                         <div className="relative w-full md:flex-1 min-w-[250px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="search" className="w-4 h-4"></i></div><input type="text" placeholder="Cari data..." className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm shadow-sm outline-none transition" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
                                         <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="building" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedUnit} onChange={(e) => setSelectedUnit(e.target.value)}><option value="">Semua Unit Kerja</option>{uniqueUnits.map((unit, idx) => <option key={idx} value={unit}>{unit}</option>)}</select></div>
                                         <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="user" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedPIC} onChange={(e) => setSelectedPIC(e.target.value)}><option value="">Semua PIC</option>{uniquePICs.map((pic, idx) => <option key={idx} value={pic}>{pic}</option>)}</select></div>
@@ -456,7 +548,16 @@
                                         {activeTab !== 'calendar' && (<div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="calendar" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}><option value="">Semua Bulan</option>{monthOptions.map((month, idx) => <option key={idx} value={idx}>{month}</option>)}</select></div>)}
                                         <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="tag" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}><option value="">Semua Kategori</option>{uniqueCategories.map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}</select></div>
                                         <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="hash" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedAkup} onChange={(e) => setSelectedAkup(e.target.value)}><option value="">Semua Kode Akup</option><option value="AKUP">Semua Kegiatan Akup</option><option value="NON-AKUP">Semua Kegiatan Non-Akup</option><option disabled>──────────</option>{uniqueAkupCodes.map((code, idx) => <option key={idx} value={code}>{code}</option>)}</select></div>
-                                        {(selectedUnit || selectedPIC || selectedWilayah || selectedMonth || selectedCategory || selectedAkup || searchTerm) && (<button onClick={() => {setSelectedUnit(''); setSelectedPIC(''); setSelectedWilayah(''); setSelectedMonth(''); setSearchTerm(''); setSelectedCategory(''); setSelectedAkup('');}} className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 text-sm font-medium transition flex items-center gap-2 flex-grow-0 whitespace-nowrap"><i data-lucide="x" className="w-4 h-4"></i> Reset</button>)}
+                                        {/* NEW: Budget Filter */}
+                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="wallet" className="w-4 h-4"></i></div>
+                                            <select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedBudgetStatus} onChange={(e) => setSelectedBudgetStatus(e.target.value)}>
+                                                <option value="">Semua Anggaran</option>
+                                                <option value="beranggaran">Beranggaran</option>
+                                                <option value="non-anggaran">Non Anggaran</option>
+                                            </select>
+                                        </div>
+                                        {(selectedUnit || selectedPIC || selectedWilayah || selectedMonth || selectedCategory || selectedAkup || selectedBudgetStatus || searchTerm) && (<button onClick={() => {setSelectedUnit(''); setSelectedPIC(''); setSelectedWilayah(''); setSelectedMonth(''); setSearchTerm(''); setSelectedCategory(''); setSelectedAkup(''); setSelectedBudgetStatus('');}} className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 text-sm font-medium transition flex items-center gap-2 flex-grow-0 whitespace-nowrap"><i data-lucide="x" className="w-4 h-4"></i> Reset</button>)}
                                     </div>
                                 )}
                                 {(activeTab === 'dppk' || activeTab === 'rab' || activeTab === 'monthly' || activeTab === 'dashboard') && currentStats && (<MiniStats programCount={currentStats.program} activityCount={currentStats.kegiatan} totalBudget={currentStats.anggaran} type={activeTab === 'rab' ? 'RAB' : (activeTab === 'monthly' ? 'Bulanan' : 'DPPK')} />)}
