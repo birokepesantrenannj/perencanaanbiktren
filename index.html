@@ -12,76 +12,147 @@
     
     <!-- Libraries -->
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+    
+    <!-- Tailwind CSS with Dark Mode Config -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            text: '#f1f5f9',
+                            muted: '#94a3b8',
+                            border: '#334155'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* Glassmorphism that adapts to dark mode */
         .glass-card { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .dark .glass-card { background: #1e293b; border-color: #334155; }
+        
         .glass-effect { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        
+        /* Grid */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e2e8f0; }
+        .dark .calendar-grid { background-color: #334155; }
+        
         .calendar-cell { background-color: white; min-height: 100px; }
+        .dark .calendar-cell { background-color: #1e293b; }
         .calendar-cell:hover { background-color: #f8fafc; }
+        .dark .calendar-cell:hover { background-color: #334155; }
+        
         .mini-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e2e8f0; font-size: 0.7rem; }
+        .dark .mini-calendar-grid { background-color: #475569; }
+        
         .mini-calendar-cell { background-color: white; height: 30px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .dark .mini-calendar-cell { background-color: #1e293b; color: #e2e8f0; }
+        
         .has-event-dot { width: 4px; height: 4px; background-color: #3073F1; border-radius: 50%; position: absolute; bottom: 2px; }
+        
         .loading-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        .dark .loading-spinner { border-color: #334155; border-top-color: #6366f1; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
         .truncate-cell { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .menu-item { transition: all 0.2s ease-in-out; }
         .menu-item:hover { transform: translateX(4px); }
         .menu-item.active { background: #ffffff; color: #3073F1; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        /* Dark mode for active menu item (if needed, though sidebar usually stays blue) */
+        
         .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes modalEnter { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .animate-modal-enter { animation: modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-        /* MODERN MOBILE NAVIGATION */
+        /* MODERN MOBILE NAVIGATION (FLOATING CAPSULE) */
         .mobile-nav-wrapper { position: fixed; bottom: 24px; left: 0; right: 0; z-index: 999; display: flex; justify-content: center; pointer-events: none; }
-        .mobile-nav-container { pointer-events: auto; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); border-radius: 28px; padding: 6px; display: flex; align-items: center; gap: 4px; max-width: 95%; overflow-x: auto; scrollbar-width: none; }
+        .mobile-nav-container { 
+            pointer-events: auto; 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(16px); 
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); 
+            border-radius: 9999px; 
+            padding: 6px; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            max-width: 95%; 
+            overflow-x: auto; 
+            scrollbar-width: none; 
+        }
+        .dark .mobile-nav-container {
+            background: rgba(30, 41, 59, 0.95);
+            border-color: rgba(51, 65, 85, 0.6);
+        }
+
         .mobile-nav-container::-webkit-scrollbar { display: none; }
-        .mobile-nav-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 60px; height: 60px; border-radius: 22px; color: #64748b; background: transparent; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); flex-shrink: 0; }
-        .mobile-nav-item.active { color: #ffffff; background: #3073F1; box-shadow: 0 8px 20px -6px rgba(48, 115, 241, 0.6); transform: translateY(-8px) scale(1.05); padding-left: 12px; padding-right: 16px; width: auto; }
-        .mobile-nav-item:not(.active):active { transform: scale(0.95); }
-        .mobile-nav-item .icon { width: 22px; height: 22px; margin-bottom: 0; }
-        .mobile-nav-item span { font-size: 9px; font-weight: 600; opacity: 0; max-width: 0; white-space: nowrap; overflow: hidden; margin-left: 0; transition: all 0.3s; }
-        .mobile-nav-item.active span { opacity: 1; max-width: 100px; margin-left: 8px; }
+        
+        .mobile-nav-item { 
+            position: relative; 
+            display: flex; 
+            flex-direction: row; 
+            align-items: center; 
+            justify-content: center; 
+            width: 44px; 
+            height: 44px; 
+            border-radius: 9999px; 
+            color: #64748b; 
+            background: transparent; 
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+            flex-shrink: 0; 
+            border: none; 
+            overflow: hidden; 
+            padding: 0; 
+        }
+        .dark .mobile-nav-item { color: #94a3b8; }
+
+        .mobile-nav-item.active { 
+            background: #3073F1; 
+            color: white; 
+            width: auto; 
+            padding-left: 12px; 
+            padding-right: 18px; 
+            box-shadow: 0 4px 12px rgba(48, 115, 241, 0.35); 
+        }
+        .dark .mobile-nav-item.active {
+            color: white; /* Keep white for contrast on blue */
+        }
+        
+        .mobile-nav-item:not(.active):hover { background-color: #f1f5f9; }
+        .dark .mobile-nav-item:not(.active):hover { background-color: #334155; }
+        
+        .mobile-nav-item .icon { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        .mobile-nav-item span { font-size: 11px; font-weight: 600; white-space: nowrap; opacity: 0; max-width: 0; margin-left: 0; transition: all 0.3s ease; }
+        .mobile-nav-item.active span { opacity: 1; max-width: 120px; margin-left: 8px; }
+        
         @media (max-width: 768px) { .main-content { padding-bottom: 120px !important; } }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
     <div id="root"></div>
     <!-- MODAL ROOT UNTUK REACT PORTAL -->
     <div id="modal-root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
-
-        // --- FIREBASE CONFIGURATION (Diperbarui dengan Config User) ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "AIzaSyCnBr_hChJ22sMTrELd-nIH3YUC2Zj8Pfg",
-            authDomain: "biktren-web.firebaseapp.com",
-            projectId: "biktren-web",
-            storageBucket: "biktren-web.firebasestorage.app",
-            messagingSenderId: "489042013616",
-            appId: "1:489042013616:web:1efc177e733c150fae3a75"
-        };
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'biktren-web';
-        
-        let auth, db, provider;
-        
-        if (window.firebaseModules && Object.keys(firebaseConfig).length > 0) {
-            const { initializeApp, getAuth, getFirestore, GoogleAuthProvider } = window.firebaseModules;
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            provider = new GoogleAuthProvider();
-            // Add scope for Gemini AI (Vertex AI/Generative Language)
-            provider.addScope('https://www.googleapis.com/auth/generative-language.retriever.readonly');
-            provider.addScope('https://www.googleapis.com/auth/cloud-platform'); 
-        }
 
         // --- UTILS & CONSTANTS ---
         const DEFAULT_DPPK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQsyhdflwwzu6_vAeJVMO8JccuK_riBbDa45q1m6xWGe0Bq5Ol-AEwzuCULArWA-J_8JoSlqWH8yoL4/pub?gid=0&single=true&output=csv";
@@ -112,14 +183,14 @@
             return waktuStr.split(',').map(s => s.trim()).filter(s => s.length > 0).length;
         };
 
-        // --- COMPONENT: MODAL PORTAL (CORE FIX) ---
+        // --- COMPONENT: MODAL PORTAL ---
         const ModalPortal = ({ children }) => {
             const modalRoot = document.getElementById('modal-root');
             if (!modalRoot) return null;
             return ReactDOM.createPortal(children, modalRoot);
         };
 
-        // --- NEW: SCROLL TO TOP BUTTON ---
+        // --- NEW: SCROLL TO TOP BUTTON (WITH ARROW ICON) ---
         const ScrollToTopButton = ({ containerRef }) => {
             const [isVisible, setIsVisible] = useState(false);
             useEffect(() => {
@@ -129,37 +200,66 @@
                 container.addEventListener('scroll', toggleVisibility);
                 return () => container.removeEventListener('scroll', toggleVisibility);
             }, [containerRef]);
+            
+            // Re-run createIcons when visibility changes
+            useEffect(() => {
+                if (isVisible && window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [isVisible]);
+
             const scrollToTop = () => { containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); };
             if (!isVisible) return null;
             return (
-                <button onClick={scrollToTop} className="fixed z-[1000] bottom-28 right-4 md:bottom-8 md:right-8 p-3 rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 animate-fade-in" aria-label="Scroll to top"><i data-lucide="arrow-up" className="w-6 h-6"></i></button>
+                <button 
+                    onClick={scrollToTop} 
+                    className="fixed z-[1000] bottom-28 right-4 md:bottom-8 md:right-8 p-3 rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 animate-fade-in flex items-center justify-center" 
+                    aria-label="Scroll to top"
+                >
+                    <i data-lucide="arrow-up" className="w-6 h-6 text-white stroke-[3px]"></i>
+                </button>
             );
         };
 
         // --- SHARED COMPONENTS ---
         const StatusBadge = ({ type }) => (
-            <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${type === 'Rutin' ? 'bg-blue-100 text-blue-700 border-blue-200' : type === 'Pengadaan' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-purple-100 text-purple-700 border-purple-200'}`}>{type || 'Umum'}</span>
+            <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${type === 'Rutin' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' : type === 'Pengadaan' ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800' : 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800'}`}>{type || 'Umum'}</span>
         );
 
         const LengthMenu = ({ value, onChange }) => (
-            <div className="flex items-center gap-2 mb-4 bg-white p-2 rounded-lg border border-slate-200 shadow-sm w-fit"><span className="text-xs font-medium text-slate-600">Tampilkan</span><select value={value} onChange={onChange} className="border border-slate-300 rounded-md py-1 px-2 text-xs font-bold text-indigo-600 bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">{[25, 50, 100, 250, 500, 1000].map(v => <option key={v} value={v}>{v}</option>)}</select><span className="text-xs font-medium text-slate-600">data</span></div>
+            <div className="flex items-center gap-2 mb-4 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm w-fit">
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Tampilkan</span>
+                <select value={value} onChange={onChange} className="border border-slate-300 dark:border-slate-600 rounded-md py-1 px-2 text-xs font-bold text-indigo-600 bg-slate-50 dark:bg-slate-700 dark:text-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+                    {[25, 50, 100, 250, 500, 1000].map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">data</span>
+            </div>
         );
 
         const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             if (totalItems === 0) return null;
             const start = (currentPage - 1) * itemsPerPage + 1; const end = Math.min(currentPage * itemsPerPage, totalItems);
-            return (<div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-slate-200 bg-white gap-4"><div className="text-xs text-slate-500">Menampilkan <span className="font-bold text-slate-700">{start}</span> - <span className="font-bold text-slate-700">{end}</span> dari <span className="font-bold text-slate-700">{totalItems}</span></div><div className="flex items-center gap-2"><button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30"><i data-lucide="chevron-left" className="w-4 h-4"></i></button><span className="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 rounded-lg border border-indigo-100">Hal. {currentPage} / {totalPages}</span><button onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30"><i data-lucide="chevron-right" className="w-4 h-4"></i></button></div></div>);
+            return (
+                <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 gap-4">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">Menampilkan <span className="font-bold text-slate-700 dark:text-slate-200">{start}</span> - <span className="font-bold text-slate-700 dark:text-slate-200">{end}</span> dari <span className="font-bold text-slate-700 dark:text-slate-200">{totalItems}</span></div>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-30 dark:text-slate-300"><i data-lucide="chevron-left" className="w-4 h-4"></i></button>
+                        <span className="px-3 py-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg border border-indigo-100 dark:border-indigo-800">Hal. {currentPage} / {totalPages}</span>
+                        <button onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-30 dark:text-slate-300"><i data-lucide="chevron-right" className="w-4 h-4"></i></button>
+                    </div>
+                </div>
+            );
         };
 
-        const MiniStats = ({ programCount, activityCount, totalBudget, type }) => (
+        const MiniStats = ({ programCount, activityCount, totalBudget }) => (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 animate-fade-in">
                 <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #3073F1 0%, #4a84f3 100%)' }}>
                     <div><p className="text-xs font-semibold text-blue-100 uppercase">Total Program</p><h3 className="text-xl font-bold text-white">{programCount}</h3></div>
                     <div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="layers" className="w-5 h-5"></i></div>
                 </div>
                 <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #0BA875 0%, #20c58e 100%)' }}>
-                    <div><p className="text-xs font-semibold text-emerald-100 uppercase">Total Kegiatan {type === 'RAB' ? '(Unik)' : ''}</p><h3 className="text-xl font-bold text-white">{activityCount}</h3></div>
+                    <div><p className="text-xs font-semibold text-emerald-100 uppercase">Total Kegiatan</p><h3 className="text-xl font-bold text-white">{activityCount}</h3></div>
                     <div className="p-3 rounded-lg bg-white/20 text-white backdrop-blur-sm"><i data-lucide="activity" className="w-5 h-5"></i></div>
                 </div>
                 <div className="p-4 rounded-xl shadow-lg flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #E78B09 0%, #f5a636 100%)' }}>
@@ -170,7 +270,35 @@
         );
 
         const StatsTable = ({ title, icon, data, colorClass, countLabel, count }) => (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6"><div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50"><div className="flex items-center gap-3"><div className={`p-2 rounded-lg ${colorClass} bg-opacity-20 text-current`}>{icon}</div><h3 className="text-lg font-bold text-slate-800">{title}</h3></div>{countLabel && <span className="text-xs font-bold px-3 py-1.5 bg-white border border-slate-200 rounded-full text-slate-600 shadow-sm">{countLabel}: {count}</span>}</div><div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-100 table-fixed"><thead className="bg-slate-50"><tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[35%]">Nama</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[12%]">Jml Program</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[12%]">Jml Kegiatan</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[20%]">Total Anggaran</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[21%]">Persentase</th></tr></thead><tbody className="divide-y divide-slate-100">{data.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50 transition"><td className="px-6 py-4 text-sm font-medium text-slate-800 truncate" title={item.name}>{item.name}</td><td className="px-6 py-4 text-center text-sm text-slate-600">{item.programCount}</td><td className="px-6 py-4 text-center text-sm text-slate-600">{item.activityCount}</td><td className="px-6 py-4 text-right text-sm font-bold text-slate-800">{formatRupiah(item.budget)}</td><td className="px-6 py-4 align-middle"><div className="flex items-center justify-end gap-2"><div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden max-w-[100px]"><div className={`h-full rounded-full ${colorClass.replace('text-', 'bg-')}`} style={{ width: `${item.percentage}%` }}></div></div><span className="text-xs font-medium text-slate-500 w-10 text-right">{item.percentage.toFixed(1)}%</span></div></td></tr>))}</tbody></table></div></div>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-6">
+                <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800">
+                    <div className="flex items-center gap-3"><div className={`p-2 rounded-lg ${colorClass} bg-opacity-20 text-current`}>{icon}</div><h3 className="text-lg font-bold text-slate-800 dark:text-white">{title}</h3></div>
+                    {countLabel && <span className="text-xs font-bold px-3 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-full text-slate-600 dark:text-slate-300 shadow-sm">{countLabel}: {count}</span>}
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700 table-fixed">
+                        <thead className="bg-slate-50 dark:bg-slate-900">
+                            <tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[35%]">Nama</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[12%]">Jml Program</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[12%]">Jml Kegiatan</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[20%]">Total Anggaran</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[21%]">Persentase</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                            {data.map((item, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                                    <td className="px-6 py-4 text-sm font-medium text-slate-800 dark:text-slate-200 truncate" title={item.name}>{item.name}</td>
+                                    <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{item.programCount}</td>
+                                    <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{item.activityCount}</td>
+                                    <td className="px-6 py-4 text-right text-sm font-bold text-slate-800 dark:text-slate-200">{formatRupiah(item.budget)}</td>
+                                    <td className="px-6 py-4 align-middle">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden max-w-[100px]"><div className={`h-full rounded-full ${colorClass.replace('text-', 'bg-')}`} style={{ width: `${item.percentage}%` }}></div></div>
+                                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 w-10 text-right">{item.percentage.toFixed(1)}%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         );
 
         // --- SUB-VIEW COMPONENTS ---
@@ -213,42 +341,91 @@
             return (
                 <div className="animate-fade-in space-y-8 pb-10">
                     <MiniStats programCount={totalProgram} activityCount={totalKegiatan} totalBudget={totalAnggaran} />
-                    <div><h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="pie-chart" className="w-5 h-5 text-indigo-600"></i> Sebaran Kategori Program</h3><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">{categoryStats.map((cat, idx) => (<div key={idx} className="p-4 rounded-xl shadow-md flex flex-col justify-between hover:shadow-lg transition-shadow" style={{ background: cat.gradient }}><div className="flex justify-between mb-2"><div className="p-2 rounded-lg bg-white/20 text-white"><i data-lucide="tag" className="w-5 h-5"></i></div><span className="text-xs font-bold px-2 py-1 rounded-full bg-white/20 text-white">{cat.percentage.toFixed(1)}%</span></div><div><p className="text-xs font-semibold text-white/80 uppercase mb-1">Program {cat.name}</p><h4 className="text-lg font-bold text-white truncate">{formatRupiah(cat.budget)}</h4><p className="text-xs text-white/70 mt-1 font-medium flex items-center gap-1"><i data-lucide="activity" className="w-3 h-3"></i> {cat.count} Kegiatan</p></div></div>))}</div></div>
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><i data-lucide="pie-chart" className="w-5 h-5 text-indigo-600"></i> Sebaran Kategori Program</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                            {categoryStats.map((cat, idx) => (
+                                <div key={idx} className="p-4 rounded-xl shadow-md flex flex-col justify-between hover:shadow-lg transition-shadow" style={{ background: cat.gradient }}>
+                                    <div className="flex justify-between mb-2">
+                                        <div className="p-2 rounded-lg bg-white/20 text-white"><i data-lucide="tag" className="w-5 h-5"></i></div>
+                                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-white/20 text-white">{cat.percentage.toFixed(1)}%</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold text-white/80 uppercase mb-1">Program {cat.name}</p>
+                                        <h4 className="text-lg font-bold text-white truncate">{formatRupiah(cat.budget)}</h4>
+                                        <p className="text-xs text-white/70 mt-1 font-medium flex items-center gap-1"><i data-lucide="activity" className="w-3 h-3"></i> {cat.count} Kegiatan</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    
                     <StatsTable title="Informasi Berdasarkan Wilayah Kerja" icon={<i data-lucide="map" className="w-5 h-5"></i>} data={getGroupStats('wilayah_kerja')} colorClass="text-blue-600" countLabel="Jumlah Wilayah" count={getGroupStats('wilayah_kerja').length} />
                     <StatsTable title="Informasi Berdasarkan Unit Kerja" icon={<i data-lucide="building-2" className="w-5 h-5"></i>} data={getGroupStats('unit_kerja')} colorClass="text-emerald-600" countLabel="Jumlah Unit" count={getGroupStats('unit_kerja').length} />
                     <StatsTable title="Informasi Berdasarkan PIC" icon={<i data-lucide="users" className="w-5 h-5"></i>} data={getGroupStats('pic')} colorClass="text-purple-600" countLabel="Jumlah PIC" count={getGroupStats('pic').length} />
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6"><div className="p-5 border-b border-slate-100 flex items-center gap-3 bg-slate-50"><div className="p-2 bg-amber-100 text-amber-600 rounded-lg"><i data-lucide="trending-up" className="w-5 h-5"></i></div><h3 className="text-lg font-bold text-slate-800">10 Kegiatan dengan Anggaran Terbesar</h3></div><div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-100"><thead className="bg-slate-50"><tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Kegiatan</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Unit Kerja</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase">Anggaran</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase">% dari Total</th></tr></thead><tbody className="divide-y divide-slate-100">{topActivities.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50 transition"><td className="px-6 py-4"><div className="text-sm font-medium text-slate-900 line-clamp-1" title={item.kegiatan}>{item.kegiatan}</div><div className="text-xs text-slate-500">{item.program}</div></td><td className="px-6 py-4 text-sm text-slate-500">{item.unit_kerja}</td><td className="px-6 py-4 text-right text-sm font-bold text-indigo-600">{formatRupiah(item.anggaran)}</td><td className="px-6 py-4 text-center text-sm text-slate-500 font-mono">{totalAnggaran > 0 ? ((item.anggaran / totalAnggaran) * 100).toFixed(2) : 0}%</td></tr>))}</tbody></table></div></div>
+                    
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mt-6">
+                        <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3 bg-slate-50 dark:bg-slate-800">
+                            <div className="p-2 bg-amber-100 text-amber-600 rounded-lg"><i data-lucide="trending-up" className="w-5 h-5"></i></div>
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-white">10 Kegiatan dengan Anggaran Terbesar</h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
+                                <thead className="bg-slate-50 dark:bg-slate-900">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Kegiatan</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Unit Kerja</th>
+                                        <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Anggaran</th>
+                                        <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">% dari Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                    {topActivities.map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-medium text-slate-900 dark:text-slate-200 line-clamp-1" title={item.kegiatan}>{item.kegiatan}</div>
+                                                <div className="text-xs text-slate-500 dark:text-slate-400">{item.program}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{item.unit_kerja}</td>
+                                            <td className="px-6 py-4 text-right text-sm font-bold text-indigo-600 dark:text-indigo-400">{formatRupiah(item.anggaran)}</td>
+                                            <td className="px-6 py-4 text-center text-sm text-slate-500 dark:text-slate-400 font-mono">{totalAnggaran > 0 ? ((item.anggaran / totalAnggaran) * 100).toFixed(2) : 0}%</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             );
         };
 
         const DPPKTable = ({ data, onSelect }) => {
             const [itemsPerPage, setItemsPerPage] = useState(25); const [currentPage, setCurrentPage] = useState(1); useEffect(() => setCurrentPage(1), [data.length]); const paginatedData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-            return (<div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px] flex flex-col"><div className="p-4 border-b border-slate-100"><LengthMenu value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} /></div><div className="overflow-x-auto flex-1"><table className="min-w-full divide-y divide-slate-200"><thead className="bg-slate-50"><tr>{['NO', 'KATEGORI', 'KEGIATAN', 'INDIKATOR & SASARAN', 'WAKTU', 'ANGGARAN', 'PIC & UNIT', 'WILAYAH KERJA', 'AKSI'].map(h => <th key={h} className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">{h}</th>)}</tr></thead><tbody className="bg-white divide-y divide-slate-200">{paginatedData.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50"><td className="px-6 py-4 text-sm text-slate-500">{item.no}</td><td className="px-6 py-4"><StatusBadge type={item.kategori} /></td><td className="px-6 py-4"><div className="text-sm font-medium text-slate-900">{item.kegiatan}</div><div className="text-xs text-slate-500 mt-1">{item.program}</div>{item.kode_akup && <span className="inline-block mt-1 px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-mono rounded">{item.kode_akup}</span>}</td><td className="px-6 py-4"><div className="text-xs text-slate-600 mb-1">🎯 {item.sasaran}</div><div className="text-xs text-slate-500 italic truncate-cell" title={item.indikator}>{item.indikator}</div></td><td className="px-6 py-4 text-sm text-slate-600 truncate-cell">{item.waktu}{getExecutionCount(item.waktu) > 0 && <span className="font-bold text-indigo-600 ml-1">({getExecutionCount(item.waktu)} Kali)</span>}</td><td className="px-6 py-4 text-right text-sm font-bold text-slate-800">{formatRupiah(item.anggaran)}</td><td className="px-6 py-4"><div className="text-sm text-slate-800">{item.pic}</div><div className="text-xs text-indigo-600 font-medium">{item.unit_kerja}</div></td><td className="px-6 py-4">{item.wilayah_kerja && <span className={`px-2 py-1 text-xs font-bold rounded-md uppercase tracking-wider ${item.wilayah_kerja.toLowerCase() === 'putra' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>{item.wilayah_kerja}</span>}</td><td className="px-6 py-4 text-center space-y-2"><button onClick={() => onSelect(item)} className="block w-full text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 font-medium transition">Detail</button>{item.link_berkas ? <a href={item.link_berkas} target="_blank" className="block w-full text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 font-medium transition text-center">BERKAS</a> : <button disabled className="block w-full text-xs bg-slate-100 text-slate-400 px-3 py-1.5 rounded-lg font-medium cursor-not-allowed">BERKAS</button>}</td></tr>))}</tbody></table></div><Pagination totalItems={data.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} /></div>);
+            return (<div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px] flex flex-col"><div className="p-4 border-b border-slate-100 dark:border-slate-700"><LengthMenu value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} /></div><div className="overflow-x-auto flex-1"><table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700"><thead className="bg-slate-50 dark:bg-slate-900"><tr>{['NO', 'KATEGORI', 'KEGIATAN', 'INDIKATOR & SASARAN', 'WAKTU', 'ANGGARAN', 'PIC & UNIT', 'WILAYAH KERJA', 'AKSI'].map(h => <th key={h} className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{h}</th>)}</tr></thead><tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">{paginatedData.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700"><td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{item.no}</td><td className="px-6 py-4"><StatusBadge type={item.kategori} /></td><td className="px-6 py-4"><div className="text-sm font-medium text-slate-900 dark:text-slate-200">{item.kegiatan}</div><div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.program}</div>{item.kode_akup && <span className="inline-block mt-1 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[10px] font-mono rounded">{item.kode_akup}</span>}</td><td className="px-6 py-4"><div className="text-xs text-slate-600 dark:text-slate-300 mb-1">🎯 {item.sasaran}</div><div className="text-xs text-slate-500 dark:text-slate-400 italic truncate-cell" title={item.indikator}>{item.indikator}</div></td><td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400 truncate-cell">{item.waktu}{getExecutionCount(item.waktu) > 0 && <span className="font-bold text-indigo-600 dark:text-indigo-400 ml-1">({getExecutionCount(item.waktu)} Kali)</span>}</td><td className="px-6 py-4 text-right text-sm font-bold text-slate-800 dark:text-slate-200">{formatRupiah(item.anggaran)}</td><td className="px-6 py-4"><div className="text-sm text-slate-800 dark:text-slate-200">{item.pic}</div><div className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">{item.unit_kerja}</div></td><td className="px-6 py-4">{item.wilayah_kerja && <span className={`px-2 py-1 text-xs font-bold rounded-md uppercase tracking-wider ${item.wilayah_kerja.toLowerCase() === 'putra' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300'}`}>{item.wilayah_kerja}</span>}</td><td className="px-6 py-4 text-center space-y-2"><button onClick={() => onSelect(item)} className="block w-full text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 px-3 py-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 font-medium transition">Detail</button>{item.link_berkas ? <a href={item.link_berkas} target="_blank" className="block w-full text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 px-3 py-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 font-medium transition text-center">BERKAS</a> : <button disabled className="block w-full text-xs bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 px-3 py-1.5 rounded-lg font-medium cursor-not-allowed">BERKAS</button>}</td></tr>))}</tbody></table></div><Pagination totalItems={data.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} /></div>);
         };
 
         const RABTable = ({ data }) => {
             const [itemsPerPage, setItemsPerPage] = useState(25); const [currentPage, setCurrentPage] = useState(1); useEffect(() => setCurrentPage(1), [data.length]); const paginatedData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-            return (<div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px] flex flex-col"><div className="p-4 border-b border-slate-100"><LengthMenu value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} /></div><div className="overflow-x-auto flex-1"><table className="min-w-full divide-y divide-slate-200"><thead className="bg-slate-50"><tr>{['KEGIATAN', 'RINCIAN & SPEC', 'VOL', 'HARGA', 'TOTAL', 'PIC', 'WILAYAH KERJA'].map(h => <th key={h} className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">{h}</th>)}</tr></thead><tbody className="bg-white divide-y divide-slate-200">{paginatedData.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50"><td className="px-6 py-4"><div className="text-sm font-medium text-slate-900 line-clamp-2">{item.kegiatan}</div><div className="text-xs text-slate-500 mt-1">{item.program}</div></td><td className="px-6 py-4"><div className="text-sm font-medium text-slate-800">{item.rincian}</div><div className="text-xs text-slate-500 mt-1">{item.jumlah} {item.satuan_jml} x {item.frek} {item.satuan_frek}</div></td><td className="px-6 py-4 text-center text-sm text-slate-600 bg-slate-50">{item.volume}</td><td className="px-6 py-4 text-right text-sm text-slate-600">{formatRupiah(item.harga)}</td><td className="px-6 py-4 text-right text-sm font-bold text-indigo-600">{formatRupiah(item.total)}</td><td className="px-6 py-4"><div className="text-xs text-slate-800 font-medium">{item.pic}</div></td><td className="px-6 py-4">{item.wilayah_kerja && <span className={`px-2 py-1 text-xs font-bold rounded-md uppercase tracking-wider ${item.wilayah_kerja.toLowerCase() === 'putra' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>{item.wilayah_kerja}</span>}</td></tr>))}</tbody></table></div><Pagination totalItems={data.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} /></div>);
+            return (<div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px] flex flex-col"><div className="p-4 border-b border-slate-100 dark:border-slate-700"><LengthMenu value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} /></div><div className="overflow-x-auto flex-1"><table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700"><thead className="bg-slate-50 dark:bg-slate-900"><tr>{['KEGIATAN', 'RINCIAN & SPEC', 'VOL', 'HARGA', 'TOTAL', 'PIC', 'WILAYAH KERJA'].map(h => <th key={h} className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{h}</th>)}</tr></thead><tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">{paginatedData.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700"><td className="px-6 py-4"><div className="text-sm font-medium text-slate-900 dark:text-slate-200 line-clamp-2">{item.kegiatan}</div><div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.program}</div></td><td className="px-6 py-4"><div className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.rincian}</div><div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.jumlah} {item.satuan_jml} x {item.frek} {item.satuan_frek}</div></td><td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50">{item.volume}</td><td className="px-6 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{formatRupiah(item.harga)}</td><td className="px-6 py-4 text-right text-sm font-bold text-indigo-600 dark:text-indigo-400">{formatRupiah(item.total)}</td><td className="px-6 py-4"><div className="text-xs text-slate-800 dark:text-slate-200 font-medium">{item.pic}</div></td><td className="px-6 py-4">{item.wilayah_kerja && <span className={`px-2 py-1 text-xs font-bold rounded-md uppercase tracking-wider ${item.wilayah_kerja.toLowerCase() === 'putra' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300'}`}>{item.wilayah_kerja}</span>}</td></tr>))}</tbody></table></div><Pagination totalItems={data.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} /></div>);
         };
 
         const MonthlyTable = ({ data, rawRAB }) => {
             const [itemsPerPage, setItemsPerPage] = useState(25); const [currentPage, setCurrentPage] = useState(1); useEffect(() => setCurrentPage(1), [data.length]); const paginatedData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-            return (<div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px] flex flex-col"><div className="p-4 border-b border-slate-100"><LengthMenu value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} /></div><div className="overflow-x-auto flex-1"><table className="min-w-full divide-y divide-slate-200"><thead className="bg-slate-50"><tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[15%]">BULAN & TAHUN</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[30%]">KEGIATAN & PROGRAM</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[25%]">DETAIL PELAKSANAAN</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[15%]">ANGGARAN BULANAN</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[15%]">PIC & UNIT</th></tr></thead><tbody className="bg-white divide-y divide-slate-200">{paginatedData.map((item, idx) => { const rabItems = rawRAB.filter(r => (r.kegiatan || '').trim().toLowerCase() === (item.kegiatan || '').trim().toLowerCase()); const subtotalRAB = rabItems.reduce((acc, curr) => acc + curr.total, 0); return (<React.Fragment key={idx}><tr className="hover:bg-slate-50 transition-colors border-l-4 border-l-indigo-500 border-b border-slate-100"><td className="px-6 py-4 align-top"><div className="flex flex-col items-start gap-1"><div className="flex items-center gap-2"><div className="bg-indigo-50 text-indigo-700 p-2 rounded-lg border border-indigo-100"><i data-lucide="calendar" className="w-4 h-4"></i></div><span className="text-sm font-bold text-slate-800 uppercase">{item.monthName}</span></div><span className="text-xs text-slate-500 font-mono ml-10">{item.displayDate}</span></div></td><td className="px-6 py-4 align-top"><div className="mb-2"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded uppercase tracking-wider">{item.kategori || 'Kegiatan'}</span>{item.kode_akup && <span className="ml-2 text-slate-400 text-[10px] font-mono">{item.kode_akup}</span>}</div><div className="text-sm font-bold text-slate-900 leading-tight mb-1">{item.kegiatan}</div><div className="text-xs text-slate-500 flex items-center gap-1"><i data-lucide="layers" className="w-3 h-3"></i> {item.program}</div></td><td className="px-6 py-4 align-top space-y-3"><div className="bg-slate-50 p-2 rounded border border-slate-100"><div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Indikator</div><div className="text-xs text-slate-700 italic">{item.indikator}</div></div></td><td className="px-6 py-4 align-top text-right"><div className="text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 inline-block">{formatRupiah(item.monthlyBudget)}</div><div className="text-[10px] text-slate-400 mt-1 italic">/ Bulan Pelaksanaan</div></td><td className="px-6 py-4 align-top"><div className="flex flex-col gap-1"><div className="text-sm font-bold text-slate-800">{item.pic}</div><div className="text-xs text-indigo-600 font-medium">{item.unit_kerja}</div></div></td></tr>{rabItems.length > 0 && (<tr className="bg-slate-50/30"><td colSpan="5" className="px-6 py-4 pl-12"><div className="flex gap-4"><div className="text-slate-300 pt-2"><i data-lucide="corner-down-right" className="w-6 h-6"></i></div><div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg overflow-hidden shadow-sm"><div className="px-4 py-2 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase flex justify-between items-center"><span className="flex items-center gap-2"><i data-lucide="shopping-cart" className="w-3 h-3"></i> Rincian Anggaran Biaya</span></div><table className="min-w-full divide-y divide-slate-100"><thead className="bg-slate-50"><tr><th className="px-4 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Item</th><th className="px-4 py-2 text-center text-[10px] font-bold text-slate-500 uppercase">Vol</th><th className="px-4 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Harga</th><th className="px-4 py-2 text-right text-[10px] font-bold text-slate-500 uppercase">Total</th></tr></thead><tbody className="divide-y divide-slate-50">{rabItems.map((r, rIdx) => (<tr key={rIdx}><td className="px-4 py-2 text-xs text-slate-700 font-medium">{r.rincian}<div className="text-[10px] text-slate-400 font-normal">{r.jumlah} {r.satuan_jml} x {r.frek} {r.satuan_frek}</div></td><td className="px-4 py-2 text-center text-xs text-slate-600 font-mono bg-slate-50/50">{r.volume}</td><td className="px-4 py-2 text-right text-xs text-slate-600 font-mono">{formatRupiah(r.harga)}</td><td className="px-4 py-2 text-right text-xs font-bold text-indigo-600 font-mono">{formatRupiah(r.total)}</td></tr>))}<tr className="bg-slate-100 border-t border-slate-200"><td colSpan="3" className="px-4 py-2 text-right text-[10px] font-bold text-slate-600 uppercase">Total RAB Kegiatan Ini</td><td className="px-4 py-2 text-right text-xs font-bold text-slate-800 font-mono">{formatRupiah(subtotalRAB)}</td></tr></tbody></table></div></div></td></tr>)}</React.Fragment>); })}</tbody></table></div><Pagination totalItems={data.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} /></div>);
+            return (<div className="glass-card rounded-2xl shadow-sm overflow-hidden min-h-[500px] flex flex-col"><div className="p-4 border-b border-slate-100 dark:border-slate-700"><LengthMenu value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} /></div><div className="overflow-x-auto flex-1"><table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700"><thead className="bg-slate-50 dark:bg-slate-900"><tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[15%]">BULAN & TAHUN</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[30%]">KEGIATAN & PROGRAM</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[25%]">DETAIL PELAKSANAAN</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[15%]">ANGGARAN BULANAN</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[15%]">PIC & UNIT</th></tr></thead><tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">{paginatedData.map((item, idx) => { const rabItems = rawRAB.filter(r => (r.kegiatan || '').trim().toLowerCase() === (item.kegiatan || '').trim().toLowerCase()); const subtotalRAB = rabItems.reduce((acc, curr) => acc + curr.total, 0); return (<React.Fragment key={idx}><tr className="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border-l-4 border-l-indigo-500 border-b border-slate-100 dark:border-slate-700"><td className="px-6 py-4 align-top"><div className="flex flex-col items-start gap-1"><div className="flex items-center gap-2"><div className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 p-2 rounded-lg border border-indigo-100 dark:border-indigo-800"><i data-lucide="calendar" className="w-4 h-4"></i></div><span className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase">{item.monthName}</span></div><span className="text-xs text-slate-500 dark:text-slate-400 font-mono ml-10">{item.displayDate}</span></div></td><td className="px-6 py-4 align-top"><div className="mb-2"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300 text-[10px] font-bold rounded uppercase tracking-wider">{item.kategori || 'Kegiatan'}</span>{item.kode_akup && <span className="ml-2 text-slate-400 dark:text-slate-500 text-[10px] font-mono">{item.kode_akup}</span>}</div><div className="text-sm font-bold text-slate-900 dark:text-slate-200 leading-tight mb-1">{item.kegiatan}</div><div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1"><i data-lucide="layers" className="w-3 h-3"></i> {item.program}</div></td><td className="px-6 py-4 align-top space-y-3"><div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded border border-slate-100 dark:border-slate-700"><div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Indikator</div><div className="text-xs text-slate-700 dark:text-slate-300 italic">{item.indikator}</div></div></td><td className="px-6 py-4 align-top text-right"><div className="text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800 inline-block">{formatRupiah(item.monthlyBudget)}</div><div className="text-[10px] text-slate-400 mt-1 italic">/ Bulan Pelaksanaan</div></td><td className="px-6 py-4 align-top"><div className="flex flex-col gap-1"><div className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.pic}</div><div className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">{item.unit_kerja}</div></div></td></tr>{rabItems.length > 0 && (<tr className="bg-slate-50/30 dark:bg-slate-700/30"><td colSpan="5" className="px-6 py-4 pl-12"><div className="flex gap-4"><div className="text-slate-300 dark:text-slate-600 pt-2"><i data-lucide="corner-down-right" className="w-6 h-6"></i></div><div className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden shadow-sm"><div className="px-4 py-2 bg-slate-100 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase flex justify-between items-center"><span className="flex items-center gap-2"><i data-lucide="shopping-cart" className="w-3 h-3"></i> Rincian Anggaran Biaya</span></div><table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700"><thead className="bg-slate-50 dark:bg-slate-900"><tr><th className="px-4 py-2 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Item</th><th className="px-4 py-2 text-center text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Vol</th><th className="px-4 py-2 text-right text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Harga</th><th className="px-4 py-2 text-right text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Total</th></tr></thead><tbody className="divide-y divide-slate-50 dark:divide-slate-700">{rabItems.map((r, rIdx) => (<tr key={rIdx}><td className="px-4 py-2 text-xs text-slate-700 dark:text-slate-300 font-medium">{r.rincian}<div className="text-[10px] text-slate-400 font-normal">{r.jumlah} {r.satuan_jml} x {r.frek} {r.satuan_frek}</div></td><td className="px-4 py-2 text-center text-xs text-slate-600 dark:text-slate-400 font-mono bg-slate-50/50 dark:bg-slate-700/50">{r.volume}</td><td className="px-4 py-2 text-right text-xs text-slate-600 dark:text-slate-400 font-mono">{formatRupiah(r.harga)}</td><td className="px-4 py-2 text-right text-xs font-bold text-indigo-600 dark:text-indigo-400 font-mono">{formatRupiah(r.total)}</td></tr>))}<tr className="bg-slate-100 dark:bg-slate-700 border-t border-slate-200 dark:border-slate-600"><td colSpan="3" className="px-4 py-2 text-right text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase">Total RAB Kegiatan Ini</td><td className="px-4 py-2 text-right text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">{formatRupiah(subtotalRAB)}</td></tr></tbody></table></div></div></td></tr>)}</React.Fragment>); })}</tbody></table></div><Pagination totalItems={data.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} /></div>);
         };
 
         const CalendarView = ({ events, setSelectedActivity }) => {
             const [date, setDate] = useState(new Date()); const [viewMode, setViewMode] = useState('month'); const daysNames = ['M', 'S', 'S', 'R', 'K', 'J', 'S'];
-            const renderMonthGrid = (targetDate, isMini = false) => { const currentMonth = targetDate.getMonth(); const currentYear = targetDate.getFullYear(); const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate(); const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay(); const days = [...Array(firstDayOfMonth).fill(null), ...Array(daysInMonth).keys()].map(i => i !== null ? i + 1 : null); return (<div className={isMini ? "mini-calendar-grid" : "calendar-grid"}>{days.map((day, idx) => { let dayEvents = [], hijriText = ""; if (day) { const cellDate = new Date(currentYear, currentMonth, day); dayEvents = events.filter(e => { const eDate = new Date(e.tanggal); return eDate.getDate() === day && eDate.getMonth() === currentMonth && eDate.getFullYear() === currentYear; }); hijriText = formatHijri(cellDate); } if (isMini) return <div key={idx} className={`mini-calendar-cell ${!day ? 'bg-transparent' : ''}`}>{day && (<><span className={`text-[10px] ${dayEvents.length > 0 ? 'font-bold text-slate-800' : 'text-slate-400'}`}>{day}</span>{dayEvents.length > 0 && <div className="has-event-dot"></div>}</>)}</div>; const isToday = day === new Date().getDate() && currentMonth === new Date().getMonth() && currentYear === new Date().getFullYear(); return (<div key={idx} className={`calendar-cell p-2 flex flex-col border-b border-r border-slate-100 ${!day ? 'bg-slate-50' : ''} ${dayEvents.length > 0 ? 'bg-indigo-50' : ''}`}>{day && <div className="flex flex-col items-center justify-center h-full"><div className={`text-xl font-medium flex items-center justify-center w-10 h-10 rounded-full mb-1 ${isToday ? 'bg-indigo-600 text-white' : (idx%7===5)?'text-red-500':'text-slate-700'}`}>{day}</div><div className="text-[10px] text-slate-400 text-center font-serif opacity-80">{hijriText}</div>{dayEvents.length > 0 && <div className="mt-2 px-2 py-1 bg-white/60 backdrop-blur-sm border border-indigo-200 text-indigo-700 text-[10px] font-bold rounded-full shadow-sm">{dayEvents.length} Kegiatan</div>}</div>}</div>); })}</div>); };
+            const renderMonthGrid = (targetDate, isMini = false) => { const currentMonth = targetDate.getMonth(); const currentYear = targetDate.getFullYear(); const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate(); const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay(); const days = [...Array(firstDayOfMonth).fill(null), ...Array(daysInMonth).keys()].map(i => i !== null ? i + 1 : null); return (<div className={isMini ? "mini-calendar-grid" : "calendar-grid"}>{days.map((day, idx) => { let dayEvents = [], hijriText = ""; if (day) { const cellDate = new Date(currentYear, currentMonth, day); dayEvents = events.filter(e => { const eDate = new Date(e.tanggal); return eDate.getDate() === day && eDate.getMonth() === currentMonth && eDate.getFullYear() === currentYear; }); hijriText = formatHijri(cellDate); } if (isMini) return <div key={idx} className={`mini-calendar-cell ${!day ? 'bg-transparent' : ''}`}>{day && (<><span className={`text-[10px] ${dayEvents.length > 0 ? 'font-bold text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>{day}</span>{dayEvents.length > 0 && <div className="has-event-dot"></div>}</>)}</div>; const isToday = day === new Date().getDate() && currentMonth === new Date().getMonth() && currentYear === new Date().getFullYear(); return (<div key={idx} className={`calendar-cell p-2 flex flex-col border-b border-r border-slate-100 dark:border-slate-700 ${!day ? 'bg-slate-50 dark:bg-slate-800/50' : ''} ${dayEvents.length > 0 ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''}`}>{day && <div className="flex flex-col items-center justify-center h-full"><div className={`text-xl font-medium flex items-center justify-center w-10 h-10 rounded-full mb-1 ${isToday ? 'bg-indigo-600 text-white' : (idx%7===5)?'text-red-500':'text-slate-700 dark:text-slate-200'}`}>{day}</div><div className="text-[10px] text-slate-400 dark:text-slate-500 text-center font-serif opacity-80">{hijriText}</div>{dayEvents.length > 0 && <div className="mt-2 px-2 py-1 bg-white/60 dark:bg-slate-700/60 backdrop-blur-sm border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold rounded-full shadow-sm">{dayEvents.length} Kegiatan</div>}</div>}</div>); })}</div>); };
             const monthlyEvents = useMemo(() => events.filter(e => { const eDate = new Date(e.tanggal); return eDate.getMonth() === date.getMonth() && eDate.getFullYear() === date.getFullYear(); }).sort((a,b) => new Date(a.tanggal) - new Date(b.tanggal)), [events, date]);
-            return (<div className="animate-fade-in flex flex-col gap-6"><div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex items-center justify-between"><div><p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Jumlah Kegiatan Bulan Ini</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{monthlyEvents.length} Kegiatan</h3><p className="text-sm text-indigo-600 mt-1 font-medium">{getMonthName(date.getMonth())} {date.getFullYear()}</p></div><div className="p-4 bg-indigo-50 text-indigo-600 rounded-full"><i data-lucide="calendar-check" className="w-8 h-8"></i></div></div><div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"><div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50"><div className="flex items-center gap-4"><h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="calendar" className="w-6 h-6 text-indigo-600"></i> {viewMode === 'month' ? `${getMonthName(date.getMonth())} ${date.getFullYear()}` : `Tahun ${date.getFullYear()}`}</h2><div className="flex bg-slate-200 rounded-lg p-1"><button onClick={() => setViewMode('month')} className={`px-3 py-1 rounded-md text-sm font-medium transition ${viewMode === 'month' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Bulanan</button><button onClick={() => setViewMode('year')} className={`px-3 py-1 rounded-md text-sm font-medium transition ${viewMode === 'year' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Tahunan</button></div></div><div className="flex space-x-2"><button onClick={() => setDate(new Date(date.getFullYear() - 1, date.getMonth(), 1))} className="p-2 hover:bg-slate-200 rounded-lg text-slate-600"><i data-lucide="chevron-left" className="w-5 h-5"></i></button><span className="py-2 px-3 font-bold text-slate-700 bg-white border border-slate-200 rounded-lg">{date.getFullYear()}</span><button onClick={() => setDate(new Date(date.getFullYear() + 1, date.getMonth(), 1))} className="p-2 hover:bg-slate-200 rounded-lg text-slate-600"><i data-lucide="chevron-right" className="w-5 h-5"></i></button></div></div>{viewMode === 'month' && <div className="flex overflow-x-auto border-b border-slate-200 bg-white p-2 hide-scrollbar space-x-2 sticky top-0 z-10">{monthOptions.map((name, index) => <button key={name} onClick={() => {const d = new Date(date); d.setMonth(index); setDate(d);}} className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition whitespace-nowrap ${date.getMonth() === index ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-100'}`}>{name}</button>)}</div>}<div className="flex-1 overflow-y-auto relative">{viewMode === 'month' ? <>{['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, i) => <div key={d} className="hidden" />)}<div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center py-3 sticky top-0 z-10 shadow-sm">{['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, i) => <div key={d} className={`text-xs font-bold uppercase ${i===5 ?'text-red-500':'text-slate-500'}`}>{d}</div>)}</div>{renderMonthGrid(date)}</> : <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{monthOptions.map((name, index) => <div key={name} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition cursor-pointer" onClick={() => {const d = new Date(date.getFullYear(), index, 1); setDate(d); setViewMode('month');}}><div className="bg-slate-50 p-2 text-center border-b border-slate-100 font-bold text-slate-700 text-sm">{name}</div><div className="p-1">{renderMonthGrid(new Date(date.getFullYear(), index, 1), true)}</div></div>)}</div>}</div></div>{viewMode === 'month' && <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"><div className="p-5 border-b border-slate-100 flex items-center gap-3 bg-slate-50"><div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><i data-lucide="list" className="w-5 h-5"></i></div><h3 className="text-lg font-bold text-slate-800">Daftar Kegiatan - {getMonthName(date.getMonth())} {date.getFullYear()}</h3></div><div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-100"><thead className="bg-slate-50"><tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[10%]">Tanggal</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[30%]">Program & Kegiatan</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase w-[15%]">Anggaran</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase w-[20%]">PIC & Unit</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[15%]">Wilayah Kerja</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase w-[10%]">Aksi</th></tr></thead><tbody className="divide-y divide-slate-100 bg-white">{monthlyEvents.map((ev, idx) => (<tr key={idx} className="hover:bg-slate-50 transition"><td className="px-6 py-4"><div className="flex flex-col items-center justify-center w-12 p-2 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100"><span className="text-lg font-bold leading-none">{new Date(ev.tanggal).getDate()}</span><span className="text-[10px] font-bold uppercase mt-1">{getMonthName(new Date(ev.tanggal).getMonth()).substring(0, 3)}</span></div></td><td className="px-6 py-4"><h4 className="text-sm font-bold text-slate-800 line-clamp-2">{ev.kegiatan}</h4><p className="text-xs text-slate-500 mt-1 line-clamp-1">{ev.program}</p></td><td className="px-6 py-4 text-right"><span className="text-sm font-bold text-slate-700 font-mono">{formatRupiah(ev.anggaran)}</span></td><td className="px-6 py-4"><div className="text-sm font-medium text-slate-800">{ev.pic}</div><div className="text-xs text-indigo-600 font-medium">{ev.unit_kerja}</div></td><td className="px-6 py-4 text-center">{ev.wilayah_kerja && <StatusBadge type={ev.wilayah_kerja} />}</td><td className="px-6 py-4 text-center"><button onClick={() => setSelectedActivity(ev)} className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition shadow-sm">Detail</button></td></tr>))}</tbody></table></div></div>}</div>);
+            return (<div className="animate-fade-in flex flex-col gap-6"><div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between"><div><p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Jumlah Kegiatan Bulan Ini</p><h3 className="text-3xl font-bold text-slate-800 dark:text-white mt-1">{monthlyEvents.length} Kegiatan</h3><p className="text-sm text-indigo-600 dark:text-indigo-400 mt-1 font-medium">{getMonthName(date.getMonth())} {date.getFullYear()}</p></div><div className="p-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full"><i data-lucide="calendar-check" className="w-8 h-8"></i></div></div><div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"><div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"><div className="flex items-center gap-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="calendar" className="w-6 h-6 text-indigo-600 dark:text-indigo-400"></i> {viewMode === 'month' ? `${getMonthName(date.getMonth())} ${date.getFullYear()}` : `Tahun ${date.getFullYear()}`}</h2><div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1"><button onClick={() => setViewMode('month')} className={`px-3 py-1 rounded-md text-sm font-medium transition ${viewMode === 'month' ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}>Bulanan</button><button onClick={() => setViewMode('year')} className={`px-3 py-1 rounded-md text-sm font-medium transition ${viewMode === 'year' ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}>Tahunan</button></div></div><div className="flex space-x-2"><button onClick={() => setDate(new Date(date.getFullYear() - 1, date.getMonth(), 1))} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300"><i data-lucide="chevron-left" className="w-5 h-5"></i></button><span className="py-2 px-3 font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg">{date.getFullYear()}</span><button onClick={() => setDate(new Date(date.getFullYear() + 1, date.getMonth(), 1))} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300"><i data-lucide="chevron-right" className="w-5 h-5"></i></button></div></div>{viewMode === 'month' && <div className="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 hide-scrollbar space-x-2 sticky top-0 z-10">{monthOptions.map((name, index) => <button key={name} onClick={() => {const d = new Date(date); d.setMonth(index); setDate(d);}} className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition whitespace-nowrap ${date.getMonth() === index ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-100 dark:border-slate-600'}`}>{name}</button>)}</div>}<div className="flex-1 overflow-y-auto relative">{viewMode === 'month' ? <>{['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, i) => <div key={d} className="hidden" />)}<div className="grid grid-cols-7 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-center py-3 sticky top-0 z-10 shadow-sm">{['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, i) => <div key={d} className={`text-xs font-bold uppercase ${i===5 ?'text-red-500':'text-slate-500 dark:text-slate-400'}`}>{d}</div>)}</div>{renderMonthGrid(date)}</> : <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{monthOptions.map((name, index) => <div key={name} className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition cursor-pointer" onClick={() => {const d = new Date(date.getFullYear(), index, 1); setDate(d); setViewMode('month');}}><div className="bg-slate-50 dark:bg-slate-700 p-2 text-center border-b border-slate-100 dark:border-slate-600 font-bold text-slate-700 dark:text-slate-200 text-sm">{name}</div><div className="p-1">{renderMonthGrid(new Date(date.getFullYear(), index, 1), true)}</div></div>)}</div>}</div></div>{viewMode === 'month' && <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden"><div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3 bg-slate-50 dark:bg-slate-800"><div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><i data-lucide="list" className="w-5 h-5"></i></div><h3 className="text-lg font-bold text-slate-800 dark:text-white">Daftar Kegiatan - {getMonthName(date.getMonth())} {date.getFullYear()}</h3></div><div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-100 dark:divide-slate-700"><thead className="bg-slate-50 dark:bg-slate-900"><tr><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[10%]">Tanggal</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[30%]">Program & Kegiatan</th><th className="px-6 py-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[15%]">Anggaran</th><th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[20%]">PIC & Unit</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[15%]">Wilayah Kerja</th><th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[10%]">Aksi</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">{monthlyEvents.map((ev, idx) => (<tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700 transition"><td className="px-6 py-4"><div className="flex flex-col items-center justify-center w-12 p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800"><span className="text-lg font-bold leading-none">{new Date(ev.tanggal).getDate()}</span><span className="text-[10px] font-bold uppercase mt-1">{getMonthName(new Date(ev.tanggal).getMonth()).substring(0, 3)}</span></div></td><td className="px-6 py-4"><h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 line-clamp-2">{ev.kegiatan}</h4><p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">{ev.program}</p></td><td className="px-6 py-4 text-right"><span className="text-sm font-bold text-slate-700 dark:text-slate-300 font-mono">{formatRupiah(ev.anggaran)}</span></td><td className="px-6 py-4"><div className="text-sm font-medium text-slate-800 dark:text-slate-200">{ev.pic}</div><div className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">{ev.unit_kerja}</div></td><td className="px-6 py-4 text-center">{ev.wilayah_kerja && <StatusBadge type={ev.wilayah_kerja} />}</td><td className="px-6 py-4 text-center"><button onClick={() => setSelectedActivity(ev)} className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition shadow-sm">Detail</button></td></tr>))}</tbody></table></div></div>}</div>);
         };
 
         const SettingView = ({ config, onSave }) => {
             const [dppk, setDppk] = useState(config.dppk);
             const [rab, setRab] = useState(config.rab);
             return (
-                <div className="max-w-2xl mx-auto mt-8 animate-fade-in"><div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200"><h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3"><i data-lucide="settings" className="w-6 h-6 text-slate-500"></i> Pengaturan Sumber Data</h2><div className="space-y-6"><div><label className="block text-sm font-medium text-slate-700 mb-2">Link CSV Google Sheet (DPPK)</label><input type="text" value={dppk} onChange={(e) => setDppk(e.target.value)} className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" /></div><div><label className="block text-sm font-medium text-slate-700 mb-2">Link CSV Google Sheet (RAB)</label><input type="text" value={rab} onChange={(e) => setRab(e.target.value)} className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" /></div><div className="pt-4 flex items-center gap-3"><button onClick={() => onSave(dppk, rab)} className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-700 transition font-medium flex items-center gap-2"><i data-lucide="save" className="w-4 h-4"></i> Simpan Perubahan</button></div></div></div></div>
+                <div className="max-w-2xl mx-auto mt-8 animate-fade-in"><div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700"><h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-3"><i data-lucide="settings" className="w-6 h-6 text-slate-500"></i> Pengaturan Sumber Data</h2><div className="space-y-6"><div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Link CSV Google Sheet (DPPK)</label><input type="text" value={dppk} onChange={(e) => setDppk(e.target.value)} className="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" /></div><div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Link CSV Google Sheet (RAB)</label><input type="text" value={rab} onChange={(e) => setRab(e.target.value)} className="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" /></div><div className="pt-4 flex items-center gap-3"><button onClick={() => onSave(dppk, rab)} className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-700 transition font-medium flex items-center gap-2"><i data-lucide="save" className="w-4 h-4"></i> Simpan Perubahan</button></div></div></div></div>
             );
         };
 
@@ -259,16 +436,15 @@
             const budgetPerExecution = executionCount > 0 ? calculatedTotal / executionCount : 0;
             return (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto" onClick={(e) => e.target === e.currentTarget && onClose()}>
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-modal-enter" onClick={(e) => e.stopPropagation()}>
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50"><div><div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md uppercase tracking-wider">{activity.kategori || 'Kegiatan'}</span>{activity.wilayah_kerja && <StatusBadge type={activity.wilayah_kerja} />}<span className="text-slate-400 text-xs font-mono">{activity.kode_akup}</span></div><h2 className="text-xl font-bold text-slate-800 leading-tight">{activity.kegiatan}</h2><p className="text-sm text-slate-500 mt-1">{activity.program}</p></div><button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500"><i data-lucide="x" className="w-6 h-6"></i></button></div>
-                        <div className="p-6 overflow-y-auto flex-1 space-y-8"><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="space-y-4"><div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><div className="text-xs font-semibold text-slate-400 uppercase mb-1">Indikator Capaian</div><div className="text-sm text-slate-700">{activity.indikator || '-'}</div></div><div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><div className="text-xs font-semibold text-slate-400 uppercase mb-1">Sasaran</div><div className="text-sm text-slate-700">{activity.sasaran || '-'}</div></div>{activity.link_berkas && <a href={activity.link_berkas} target="_blank" className="block w-full text-center bg-blue-50 text-blue-600 p-3 rounded-lg border border-blue-100 hover:bg-blue-100 transition font-medium flex items-center justify-center gap-2"><i data-lucide="file-text" className="w-4 h-4"></i> Buka Berkas Pendukung</a>}</div><div className="space-y-4"><div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3"><div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><i data-lucide="calendar" className="w-5 h-5"></i></div><div><div className="text-xs font-semibold text-slate-400 uppercase">Waktu Pelaksanaan</div><div className="text-sm font-bold text-slate-800">{activity.waktu || '-'}{executionCount > 0 && <span className="text-indigo-600 ml-1">({executionCount} Kali)</span>}</div></div></div><div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3"><div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg"><i data-lucide="wallet" className="w-5 h-5"></i></div><div><div className="text-xs font-semibold text-slate-400 uppercase">Total Anggaran (Realisasi RAB)</div><div className="text-lg font-bold text-emerald-600">{formatRupiah(calculatedTotal)}</div>{budgetPerExecution > 0 && <div className="text-xs text-slate-500 mt-1">Est. {formatRupiah(budgetPerExecution)} / Pelaksanaan</div>}</div></div></div></div><div><h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="shopping-cart" className="w-5 h-5 text-indigo-600"></i> Rincian Anggaran Biaya (RAB)</h3><div className="border border-slate-200 rounded-xl overflow-hidden"><table className="min-w-full divide-y divide-slate-200"><thead className="bg-slate-50"><tr><th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Rincian Item</th><th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">Vol</th><th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Harga Satuan</th><th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Total Biaya</th></tr></thead><tbody className="bg-white divide-y divide-slate-200">{rabItems.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50"><td className="px-4 py-3"><div className="text-sm font-medium text-slate-800">{item.rincian}</div><div className="text-xs text-slate-500">{item.jumlah} {item.satuan_jml} x {item.frek} {item.satuan_frek}</div></td><td className="px-4 py-3 text-center text-sm text-slate-600 bg-slate-50 font-mono">{item.volume}</td><td className="px-4 py-3 text-right text-sm text-slate-600 font-mono">{formatRupiah(item.harga)}</td><td className="px-4 py-3 text-right text-sm font-bold text-slate-800 font-mono">{formatRupiah(item.total)}</td></tr>))}</tbody><tfoot className="bg-slate-50"><tr><td colSpan="3" className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">Total Keseluruhan</td><td className="px-4 py-3 text-right text-sm font-bold text-indigo-600">{formatRupiah(calculatedTotal)}</td></tr></tfoot></table></div></div></div><div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end"><button onClick={onClose} className="px-6 py-2 bg-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-300 transition">Tutup</button></div></div></div>
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-modal-enter" onClick={(e) => e.stopPropagation()}>
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-start bg-slate-50 dark:bg-slate-800"><div><div className="flex items-center gap-2 mb-2"><span className="px-2 py-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 text-xs font-bold rounded-md uppercase tracking-wider">{activity.kategori || 'Kegiatan'}</span>{activity.wilayah_kerja && <StatusBadge type={activity.wilayah_kerja} />}<span className="text-slate-400 dark:text-slate-500 text-xs font-mono">{activity.kode_akup}</span></div><h2 className="text-xl font-bold text-slate-800 dark:text-white leading-tight">{activity.kegiatan}</h2><p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{activity.program}</p></div><button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-500 dark:text-slate-400"><i data-lucide="x" className="w-6 h-6"></i></button></div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-8"><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="space-y-4"><div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700"><div className="text-xs font-semibold text-slate-400 uppercase mb-1">Indikator Capaian</div><div className="text-sm text-slate-700 dark:text-slate-300">{activity.indikator || '-'}</div></div><div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700"><div className="text-xs font-semibold text-slate-400 uppercase mb-1">Sasaran</div><div className="text-sm text-slate-700 dark:text-slate-300">{activity.sasaran || '-'}</div></div>{activity.link_berkas && <a href={activity.link_berkas} target="_blank" className="block w-full text-center bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 p-3 rounded-lg border border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition font-medium flex items-center justify-center gap-2"><i data-lucide="file-text" className="w-4 h-4"></i> Buka Berkas Pendukung</a>}</div><div className="space-y-4"><div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center gap-3"><div className="p-2 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg"><i data-lucide="calendar" className="w-5 h-5"></i></div><div><div className="text-xs font-semibold text-slate-400 uppercase">Waktu Pelaksanaan</div><div className="text-sm font-bold text-slate-800 dark:text-slate-200">{activity.waktu || '-'}{executionCount > 0 && <span className="text-indigo-600 dark:text-indigo-400 ml-1">({executionCount} Kali)</span>}</div></div></div><div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center gap-3"><div className="p-2 bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-lg"><i data-lucide="wallet" className="w-5 h-5"></i></div><div><div className="text-xs font-semibold text-slate-400 uppercase">Total Anggaran (Realisasi RAB)</div><div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{formatRupiah(calculatedTotal)}</div>{budgetPerExecution > 0 && <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Est. {formatRupiah(budgetPerExecution)} / Pelaksanaan</div>}</div></div></div></div><div><h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><i data-lucide="shopping-cart" className="w-5 h-5 text-indigo-600 dark:text-indigo-400"></i> Rincian Anggaran Biaya (RAB)</h3><div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden"><table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700"><thead className="bg-slate-50 dark:bg-slate-900"><tr><th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Rincian Item</th><th className="px-4 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Vol</th><th className="px-4 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Harga Satuan</th><th className="px-4 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Total Biaya</th></tr></thead><tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">{rabItems.map((item, idx) => (<tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700"><td className="px-4 py-3"><div className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.rincian}</div><div className="text-xs text-slate-500 dark:text-slate-400">{item.jumlah} {item.satuan_jml} x {item.frek} {item.satuan_frek}</div></td><td className="px-4 py-3 text-center text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 font-mono">{item.volume}</td><td className="px-4 py-3 text-right text-sm text-slate-600 dark:text-slate-400 font-mono">{formatRupiah(item.harga)}</td><td className="px-4 py-3 text-right text-sm font-bold text-slate-800 dark:text-slate-200 font-mono">{formatRupiah(item.total)}</td></tr>))}</tbody><tfoot className="bg-slate-50 dark:bg-slate-700/50"><tr><td colSpan="3" className="px-4 py-3 text-right text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">Total Keseluruhan</td><td className="px-4 py-3 text-right text-sm font-bold text-indigo-600 dark:text-indigo-400">{formatRupiah(calculatedTotal)}</td></tr></tfoot></table></div></div></div><div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex justify-end"><button onClick={onClose} className="px-6 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition">Tutup</button></div></div></div>
             );
         };
 
         const App = () => {
-            const [user, setUser] = useState(null); // No longer used but kept for structure compatibility
-            const [geminiToken, setGeminiToken] = useState(null); // No longer used
             const [activeTab, setActiveTab] = useState('dashboard');
+            const [darkMode, setDarkMode] = useState(false);
             
             const [config, setConfig] = useState({ dppk: localStorage.getItem('dppk_url') || DEFAULT_DPPK, rab: localStorage.getItem('rab_url') || DEFAULT_RAB });
             const [searchTerm, setSearchTerm] = useState('');
@@ -286,7 +462,21 @@
             const [selectedActivity, setSelectedActivity] = useState(null);
             const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-            // Define Menu Items for Mapping (Fix for ReferenceError)
+            // Dark Mode Toggle Logic
+            useEffect(() => {
+                const isDark = localStorage.getItem('darkMode') === 'true';
+                setDarkMode(isDark);
+                if (isDark) document.documentElement.classList.add('dark');
+            }, []);
+
+            const toggleDarkMode = () => {
+                const newMode = !darkMode;
+                setDarkMode(newMode);
+                localStorage.setItem('darkMode', newMode);
+                if (newMode) document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
+            };
+
             const menuItems = [
                 { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
                 { id: 'dppk', label: 'Data DPPK', icon: 'list' },
@@ -345,9 +535,10 @@
 
             const uniqueUnits = useMemo(() => Array.from(new Set([...(dataDPPK || []).map(i => i.unit_kerja), ...(dataRAB || []).map(i => i.unit_kerja)])).filter(Boolean).sort(), [dataDPPK, dataRAB]);
             const uniquePICs = useMemo(() => Array.from(new Set([...(dataDPPK || []).map(i => i.pic), ...(dataRAB || []).map(i => i.pic)])).filter(Boolean).sort(), [dataDPPK, dataRAB]);
+            // NEW: Unique Wilayah
             const uniqueWilayahs = useMemo(() => Array.from(new Set([...(dataDPPK || []).map(i => i.wilayah_kerja), ...(dataRAB || []).map(i => i.wilayah_kerja)])).filter(Boolean).sort(), [dataDPPK, dataRAB]);
-            const uniqueCategories = useMemo(() => Array.from(new Set((dataDPPK || []).map(d => d.kategori).filter(Boolean))).sort(), [dataDPPK]);
-            const uniqueAkupCodes = useMemo(() => Array.from(new Set((dataDPPK || []).map(d => d.kode_akup).filter(c => c && c !== '-'))).sort(), [dataDPPK]);
+            const uniqueCategories = useMemo(() => Array.from(new Set(dataDPPK.map(d => d.kategori).filter(Boolean))).sort(), [dataDPPK]);
+            const uniqueAkupCodes = useMemo(() => Array.from(new Set(dataDPPK.map(d => d.kode_akup).filter(c => c && c !== '-'))).sort(), [dataDPPK]);
 
             const filterItem = (item) => {
                 const search = searchTerm.toLowerCase();
@@ -455,15 +646,18 @@
                         anggaran: (filteredRAB || []).reduce((acc, curr) => acc + (curr.total || 0), 0)
                     };
                 } else if (activeTab === 'monthly') {
+                     // For monthly stats
                      return {
                         program: new Set(processedMonthlyData.map(d => d.program)).size,
-                        kegiatan: processedMonthlyData.length, 
+                        kegiatan: processedMonthlyData.length, // Rows count
                         anggaran: processedMonthlyData.reduce((acc, curr) => acc + (curr.monthlyBudget || 0), 0)
                     };
                 }
                 return null;
             }, [activeTab, filteredDPPK, filteredRAB, processedMonthlyData]);
 
+
+            // Calendar Events
             const calendarEvents = useMemo(() => {
                 let expandedEvents = [];
                 (filteredDPPK || []).forEach(item => {
@@ -481,6 +675,7 @@
                 return expandedEvents;
             }, [filteredDPPK]);
 
+            // Stats Calculation
             const stats = useMemo(() => ({
                 totalAnggaran: (filteredDPPK || []).reduce((acc, curr) => acc + (curr.anggaran || 0), 0),
                 totalRealisasi: (filteredRAB || []).reduce((acc, curr) => acc + (curr.total || 0), 0),
@@ -489,13 +684,13 @@
 
             const getRABForActivity = (kegiatanName) => (dataRAB || []).filter(item => item.kegiatan && item.kegiatan.trim().toLowerCase() === kegiatanName.trim().toLowerCase());
 
-            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [activeTab, loading, selectedActivity, searchTerm, selectedUnit, selectedPIC, selectedWilayah, dataDPPK, dataRAB, currentStats, isSidebarCollapsed]);
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [activeTab, loading, selectedActivity, searchTerm, selectedUnit, selectedPIC, selectedWilayah, dataDPPK, dataRAB, currentStats, isSidebarCollapsed, darkMode]);
 
             return (
                 <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 font-sans">
                     {/* SIDEBAR */}
-                    <aside className={`hidden md:flex flex-col bg-[#3073F1] border-r border-blue-600 h-screen sticky top-0 z-50 transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-72'}`}>
-                        <div className="p-4 border-b border-blue-500 flex items-center justify-between">
+                    <aside className={`hidden md:flex flex-col bg-[#3073F1] dark:bg-slate-900 border-r border-blue-600 dark:border-slate-700 h-screen sticky top-0 z-50 transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-72'}`}>
+                        <div className="p-4 border-b border-blue-500 dark:border-slate-700 flex items-center justify-between">
                              <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center w-full' : ''}`}>
                                 <div className="bg-white p-2 rounded-xl text-[#3073F1] shadow-lg shrink-0"><i data-lucide="layers" className="w-6 h-6"></i></div>
                                 {!isSidebarCollapsed && <div><h1 className="font-bold text-white leading-tight">Perencanaan<br/>Biktren</h1></div>}
@@ -505,13 +700,25 @@
                         {isSidebarCollapsed && <button onClick={() => setIsSidebarCollapsed(false)} className="w-full py-3 text-blue-200 hover:text-white flex justify-center hover:bg-blue-500/50 transition"><i data-lucide="chevron-right" className="w-5 h-5"></i></button>}
                         <nav className="flex-1 p-4 space-y-2 overflow-y-auto hide-scrollbar">
                             <button onClick={() => setActiveTab('dashboard')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'dashboard' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Dashboard' : ''}><i data-lucide="layout-dashboard" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Dashboard</span>}</button>
+                            
                             {!isSidebarCollapsed && <div className="px-4 py-2 text-xs font-semibold text-blue-200 uppercase tracking-wider mt-4">Data Master</div>}
                             {isSidebarCollapsed && <div className="my-2 border-t border-blue-500/30"></div>}
+
                             <button onClick={() => setActiveTab('dppk')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'dppk' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Data DPPK' : ''}><i data-lucide="list" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Data DPPK</span>}</button>
                             <button onClick={() => setActiveTab('monthly')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'monthly' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Rincian Bulanan' : ''}><i data-lucide="book-open" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Rincian Bulanan</span>}</button>
                             <button onClick={() => setActiveTab('rab')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'rab' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Rincian RAB' : ''}><i data-lucide="shopping-bag" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Rincian RAB</span>}</button>
                             <button onClick={() => setActiveTab('calendar')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'calendar' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Kalender Kerja' : ''}><i data-lucide="calendar" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Kalender Kerja</span>}</button>
-                            <div className={`mt-auto ${!isSidebarCollapsed ? 'pt-4 border-t border-blue-500' : 'pt-2 border-t border-blue-500/30'}`}><button onClick={() => setActiveTab('setting')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'setting' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Pengaturan' : ''}><i data-lucide="settings" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Pengaturan</span>}</button></div>
+                            
+                            <div className={`mt-auto ${!isSidebarCollapsed ? 'pt-4 border-t border-blue-500' : 'pt-2 border-t border-blue-500/30'}`}>
+                                <button onClick={() => setActiveTab('setting')} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium ${activeTab === 'setting' ? 'active' : 'text-blue-100 hover:bg-white/10 hover:text-white'}`} title={isSidebarCollapsed ? 'Pengaturan' : ''}><i data-lucide="settings" className="w-5 h-5 shrink-0"></i> {!isSidebarCollapsed && <span>Pengaturan</span>}</button>
+                            </div>
+                            
+                            {/* Dark Mode Toggle Sidebar */}
+                             <button onClick={toggleDarkMode} className={`menu-item w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-lg text-sm font-medium text-blue-100 hover:bg-white/10 hover:text-white mt-2`} title={isSidebarCollapsed ? 'Mode Gelap' : ''}>
+                                <i data-lucide={darkMode ? "sun" : "moon"} className="w-5 h-5 shrink-0"></i> 
+                                {!isSidebarCollapsed && <span>{darkMode ? "Mode Terang" : "Mode Gelap"}</span>}
+                            </button>
+
                             {/* QUOTE FEATURE RESTORED HERE */}
                             {!isSidebarCollapsed && (
                                 <div className="mt-6 w-full">
@@ -519,7 +726,7 @@
                                         <div className="relative z-10">
                                             <p className="text-sm text-white font-medium italic leading-relaxed text-justify">
                                                 <span className="text-4xl font-serif mr-1 leading-none align-text-top text-white" style={{color: '#E78B09'}}>"</span><br/>
-                                                Dalam merencanakan dan melaksanakan program dan kegiatan pesantren: lakukan se<span className="font-bold text-white">ideal</span> mungkin, bila tidak bisa maka lakukan secara <span className="font-bold text-white">realistis</span>, dan jika masih belum bisa lakukan secara <span className="font-bold text-white">rasional</span>".
+                                                Dalam merencanakan dan melaksanakan program dan kegiatan pesantren: lakukan se<span className="font-bold text-white">IDEAL</span> mungkin, bila tidak bisa maka lakukan secara <span className="font-bold text-white">REALISTIS</span>, dan jika masih belum bisa lakukan secara <span className="font-bold text-white">RASIONAL</span>".
                                             </p>
                                             <div className="mt-4 flex items-start gap-3 pt-3 border-t border-white/30">
                                                 <div className="h-10 w-0.5 rounded-full bg-white"></div>
@@ -533,34 +740,78 @@
                                 </div>
                             )}
                         </nav>
-                        {!isSidebarCollapsed && <div className="p-4 border-t border-blue-500 bg-[#3073F1]"><div className="text-[10px] text-blue-300 text-center mt-2">© 2026 Perencanaan Biktren</div></div>}
+                        {!isSidebarCollapsed && <div className="p-4 border-t border-blue-500 dark:border-slate-700 bg-[#3073F1] dark:bg-slate-900"><div className="text-[10px] text-blue-300 text-center mt-2">© {currentYear} Perencanaan Biktren</div></div>}
                     </aside>
-                    <div className="md:hidden mobile-nav-wrapper"><nav className="mobile-nav-container">{menuItems.filter(item => item.id !== 'ai-chat').map((item) => (<button key={item.id} onClick={() => setActiveTab(item.id)} className={`mobile-nav-item ${activeTab === item.id ? 'active' : ''}`}><div className="icon"><i data-lucide={item.icon} className="w-full h-full"></i></div><span>{item.label}</span></button>))}</nav></div>
-                    <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative pb-32 md:pb-8 main-content">
-                        {loading ? (<div className="flex flex-col items-center justify-center h-full"><div className="loading-spinner mb-4"></div><p className="text-slate-500 animate-pulse">Menyiapkan Dashboard...</p></div>) : error ? (<div className="flex items-center justify-center h-full bg-red-50 rounded-2xl p-8 text-center"><h2 className="text-xl font-bold text-slate-800">Terjadi Kesalahan</h2><p className="text-slate-600 mb-4">{error}</p><button onClick={() => setActiveTab('setting')} className="bg-indigo-600 text-white px-6 py-2 rounded-lg">Periksa Pengaturan</button></div>) : (
+
+                    {/* MOBILE BOTTOM NAVIGATION (RESTORED TO FLOATING DOCK) */}
+                    <div className="md:hidden mobile-nav-wrapper">
+                        <nav className="mobile-nav-container">
+                            {menuItems.filter(item => item.id !== 'ai-chat').map((item) => (
+                                <button 
+                                    key={item.id}
+                                    onClick={() => setActiveTab(item.id)} 
+                                    className={`mobile-nav-item ${activeTab === item.id ? 'active' : ''}`}
+                                >
+                                    <div className="icon">
+                                        <i data-lucide={item.icon} className="w-full h-full"></i>
+                                    </div>
+                                    {/* Restore Text Below Icon Style (Optional if preferred, but keeping Pill for consistency with request, let me know if strictly old style needed) - User asked for "Gaya Menu... yang sebelumnya". Previous version was Icon + Text below. Reverting to that style based on "Floating Dock" comment.*/}
+                                    {/* Actually user said "sebelumnya" which was the standard bottom nav or the dock style? The provided code block in prev turn had the pill style. I will revert to standard icon-only/stacked style if that was preferred, but usually "Floating Dock" implies the one provided before Pill. Let's stick to the high quality Dock style I provided 2 turns ago but ensure it works perfectly. */}
+                                    {/* Wait, user said "Sebelum saya minta fitur Filter Anggaran". Back then it was Pill style? No, it was likely the "Icon top, text bottom" or "Icon only then expands". I will use the "Icon then expands" as it is most space efficient and modern. */}
+                                    {/* Actually, looking at the code I provided 2 turns ago, it was the "pill/capsule" style. I will stick to that one but make sure it works flawlessly. */}
+                                    <span>{item.label}</span>
+                                </button>
+                            ))}
+                            {/* Dark Mode Toggle Mobile */}
+                            <button onClick={toggleDarkMode} className={`mobile-nav-item`}>
+                                <div className="icon"><i data-lucide={darkMode ? "sun" : "moon"} className="w-full h-full"></i></div>
+                            </button>
+                        </nav>
+                    </div>
+
+                    {/* MAIN CONTENT */}
+                    <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative pb-32 md:pb-8 main-content bg-slate-50 dark:bg-slate-900">
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center h-full"><div className="loading-spinner mb-4"></div><p className="text-slate-500 dark:text-slate-400 animate-pulse">Menyiapkan Dashboard...</p></div>
+                        ) : error ? (
+                            <div className="flex items-center justify-center h-full bg-red-50 dark:bg-red-900/20 rounded-2xl p-8 text-center"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Terjadi Kesalahan</h2><p className="text-slate-600 dark:text-slate-300 mb-4">{error}</p><button onClick={() => setActiveTab('setting')} className="bg-indigo-600 text-white px-6 py-2 rounded-lg">Periksa Pengaturan</button></div>
+                        ) : (
                             <>
                                 {activeTab !== 'setting' && activeTab !== 'dashboard' && (
-                                    <div className="flex flex-wrap items-center gap-4 mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                                        <div className="relative w-full md:flex-1 min-w-[250px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="search" className="w-4 h-4"></i></div><input type="text" placeholder="Cari data..." className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm shadow-sm outline-none transition" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="building" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedUnit} onChange={(e) => setSelectedUnit(e.target.value)}><option value="">Semua Unit Kerja</option>{uniqueUnits.map((unit, idx) => <option key={idx} value={unit}>{unit}</option>)}</select></div>
-                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="user" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedPIC} onChange={(e) => setSelectedPIC(e.target.value)}><option value="">Semua PIC</option>{uniquePICs.map((pic, idx) => <option key={idx} value={pic}>{pic}</option>)}</select></div>
-                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="map" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedWilayah} onChange={(e) => setSelectedWilayah(e.target.value)}><option value="">Semua Wilayah</option>{uniqueWilayahs.map((wil, idx) => <option key={idx} value={wil}>{wil}</option>)}</select></div>
-                                        {activeTab !== 'calendar' && (<div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="calendar" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}><option value="">Semua Bulan</option>{monthOptions.map((month, idx) => <option key={idx} value={idx}>{month}</option>)}</select></div>)}
-                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="tag" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}><option value="">Semua Kategori</option>{uniqueCategories.map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}</select></div>
-                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="hash" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedAkup} onChange={(e) => setSelectedAkup(e.target.value)}><option value="">Semua Kode Akup</option><option value="AKUP">Semua Kegiatan Akup</option><option value="NON-AKUP">Semua Kegiatan Non-Akup</option><option disabled>──────────</option>{uniqueAkupCodes.map((code, idx) => <option key={idx} value={code}>{code}</option>)}</select></div>
+                                    <div className="flex flex-wrap items-center gap-4 mb-6 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                        <div className="relative w-full md:flex-1 min-w-[250px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="search" className="w-4 h-4"></i></div><input type="text" placeholder="Cari data..." className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm shadow-sm outline-none transition" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="building" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedUnit} onChange={(e) => setSelectedUnit(e.target.value)}><option value="">Semua Unit Kerja</option>{uniqueUnits.map((unit, idx) => <option key={idx} value={unit}>{unit}</option>)}</select></div>
+                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="user" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedPIC} onChange={(e) => setSelectedPIC(e.target.value)}><option value="">Semua PIC</option>{uniquePICs.map((pic, idx) => <option key={idx} value={pic}>{pic}</option>)}</select></div>
+                                        {/* NEW: Wilayah Kerja Filter */}
+                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="map" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedWilayah} onChange={(e) => setSelectedWilayah(e.target.value)}><option value="">Semua Wilayah</option>{uniqueWilayahs.map((wil, idx) => <option key={idx} value={wil}>{wil}</option>)}</select></div>
+                                        {/* NEW: Month Filter */}
+                                        {activeTab !== 'calendar' && (
+                                            <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="calendar" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}><option value="">Semua Bulan</option>{monthOptions.map((month, idx) => <option key={idx} value={idx}>{month}</option>)}</select></div>
+                                        )}
+
+                                        {/* Category Filter */}
+                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="tag" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}><option value="">Semua Kategori</option>{uniqueCategories.map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}</select></div>
+
+                                        {/* AKUP Filter */}
+                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="hash" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedAkup} onChange={(e) => setSelectedAkup(e.target.value)}><option value="">Semua Kode Akup</option><option value="AKUP">Semua Kegiatan Akup</option><option value="NON-AKUP">Semua Kegiatan Non-Akup</option><option disabled>──────────</option>{uniqueAkupCodes.map((code, idx) => <option key={idx} value={code}>{code}</option>)}</select></div>
+
                                         {/* NEW: Budget Filter */}
-                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="wallet" className="w-4 h-4"></i></div>
-                                            <select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-lg bg-slate-50 focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedBudgetStatus} onChange={(e) => setSelectedBudgetStatus(e.target.value)}>
-                                                <option value="">Semua Anggaran</option>
-                                                <option value="beranggaran">Beranggaran</option>
-                                                <option value="non-anggaran">Non Anggaran</option>
-                                            </select>
-                                        </div>
-                                        {(selectedUnit || selectedPIC || selectedWilayah || selectedMonth || selectedCategory || selectedAkup || selectedBudgetStatus || searchTerm) && (<button onClick={() => {setSelectedUnit(''); setSelectedPIC(''); setSelectedWilayah(''); setSelectedMonth(''); setSearchTerm(''); setSelectedCategory(''); setSelectedAkup(''); setSelectedBudgetStatus('');}} className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 text-sm font-medium transition flex items-center gap-2 flex-grow-0 whitespace-nowrap"><i data-lucide="x" className="w-4 h-4"></i> Reset</button>)}
+                                        <div className="relative w-full md:w-auto flex-grow min-w-[160px]"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i data-lucide="wallet" className="w-4 h-4"></i></div><select className="block w-full pl-10 pr-8 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-indigo-500 sm:text-sm shadow-sm outline-none cursor-pointer" value={selectedBudgetStatus} onChange={(e) => setSelectedBudgetStatus(e.target.value)}><option value="">Semua Anggaran</option><option value="beranggaran">Beranggaran</option><option value="non-anggaran">Non Anggaran</option></select></div>
+
+                                        {(selectedUnit || selectedPIC || selectedWilayah || selectedMonth || selectedCategory || selectedAkup || selectedBudgetStatus || searchTerm) && (<button onClick={() => {setSelectedUnit(''); setSelectedPIC(''); setSelectedWilayah(''); setSelectedMonth(''); setSearchTerm(''); setSelectedCategory(''); setSelectedAkup(''); setSelectedBudgetStatus('');}} className="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 text-sm font-medium transition flex items-center gap-2 flex-grow-0 whitespace-nowrap"><i data-lucide="x" className="w-4 h-4"></i> Reset</button>)}
                                     </div>
                                 )}
-                                {(activeTab === 'dppk' || activeTab === 'rab' || activeTab === 'monthly' || activeTab === 'dashboard') && currentStats && (<MiniStats programCount={currentStats.program} activityCount={currentStats.kegiatan} totalBudget={currentStats.anggaran} type={activeTab === 'rab' ? 'RAB' : (activeTab === 'monthly' ? 'Bulanan' : 'DPPK')} />)}
+
+                                {/* FIXED: Always show MiniStats on data tabs and dashboard */}
+                                {(activeTab === 'dppk' || activeTab === 'rab' || activeTab === 'monthly' || activeTab === 'dashboard') && currentStats && (
+                                    <MiniStats 
+                                        programCount={currentStats.program} 
+                                        activityCount={currentStats.kegiatan} 
+                                        totalBudget={currentStats.anggaran}
+                                        type={activeTab === 'rab' ? 'RAB' : (activeTab === 'monthly' ? 'Bulanan' : 'DPPK')}
+                                    />
+                                )}
+
                                 {activeTab === 'dashboard' && <DashboardView stats={stats} dataDPPK={filteredDPPK} dataRAB={filteredRAB} />}
                                 {activeTab === 'dppk' && <DPPKTable data={filteredDPPK} onSelect={setSelectedActivity} />}
                                 {activeTab === 'monthly' && <MonthlyTable data={processedMonthlyData} rawRAB={dataRAB} />}
@@ -570,7 +821,9 @@
                             </>
                         )}
                     </main>
+
                     {selectedActivity && <ModalPortal><ActivityDetailModal activity={selectedActivity} rabItems={getRABForActivity(selectedActivity.kegiatan)} onClose={() => setSelectedActivity(null)} /></ModalPortal>}
+                    {/* ADDED: ScrollToTopButton */}
                     <ScrollToTopButton containerRef={{ current: document.querySelector('.main-content') }} />
                 </div>
             );
